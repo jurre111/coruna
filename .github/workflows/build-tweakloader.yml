@@ -1,0 +1,75 @@
+name: Build TweakLoader
+
+on:
+  workflow_dispatch:
+    inputs:
+      update_payload_in_worktree:
+        description: "Also copy built TweakLoader.dylib into payloads/TweakLoader.dylib in the workflow workspace"
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
+  push:
+    paths:
+      - "TweakLoader/**"
+      - ".github/workflows/build-tweakloader.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: macos-14
+    env:
+      THEOS: ${{ github.workspace }}/.theos-ci/theos
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install build tools
+        run: |
+          brew update
+          brew install ldid || true
+
+      - name: Install Theos
+        run: |
+          set -euo pipefail
+          mkdir -p "${{ github.workspace }}/.theos-ci"
+          git clone --recursive https://github.com/theos/theos "$THEOS"
+          rm -rf "$THEOS/sdks"
+          git clone https://github.com/theos/sdks "$THEOS/sdks"
+
+      - name: Build TweakLoader
+        working-directory: TweakLoader
+        run: |
+          set -euo pipefail
+          make clean
+          make package FINALPACKAGE=1
+
+      - name: Prepare artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p dist/build dist/payloads
+
+          cp -v TweakLoader/.theos/obj/TweakLoader.dylib dist/build/
+          cp -v TweakLoader/.theos/obj/SpringBoardTweak.dylib dist/build/ || true
+          cp -v TweakLoader/packages/*.deb dist/build/ || true
+
+          cp -v TweakLoader/.theos/obj/TweakLoader.dylib dist/payloads/TweakLoader.dylib
+
+          if [[ "${{ inputs.update_payload_in_worktree || 'true' }}" == "true" ]]; then
+            cp -v TweakLoader/.theos/obj/TweakLoader.dylib payloads/TweakLoader.dylib
+            cp -v payloads/TweakLoader.dylib dist/payloads/TweakLoader.dylib
+          fi
+
+          tar -czf dist/payloads-tweakloader.tar.gz -C dist payloads
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: tweakloader-build-${{ github.sha }}
+          path: dist/
+          if-no-files-found: error

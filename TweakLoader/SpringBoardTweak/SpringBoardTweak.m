@@ -82,17 +82,104 @@ static void initStatusBarTweak(void) {
 
 #pragma mark - Status Bar gesture
 
+static BOOL sDidShowInjectedAlert = NO;
+static BOOL sDidInstallStatusBarGesture = NO;
+static UIWindow *sInjectedAlertWindow = nil;
+static BOOL sIsPresentingInjectedAlert = NO;
+
+static void scheduleInjectedAlertPresentation(void);
+
+static void writeMarker(NSString *path, NSString *content) {
+    @try {
+        [content writeToFile:path atomically:YES encoding:NSUTF8StringEncoding error:nil];
+    } @catch (__unused NSException *exception) {
+    }
+}
+
+static UIWindowScene *activeWindowScene(void) {
+    if (@available(iOS 13.0, *)) {
+        for (UIScene *scene in UIApplication.sharedApplication.connectedScenes) {
+            if (![scene isKindOfClass:[UIWindowScene class]]) continue;
+            if (scene.activationState == UISceneActivationStateForegroundActive) {
+                return (UIWindowScene *)scene;
+            }
+        }
+    }
+    return nil;
+}
+
+static void cleanupInjectedAlertWindow(void) {
+    if (!sInjectedAlertWindow) return;
+    sInjectedAlertWindow.hidden = YES;
+    sInjectedAlertWindow.rootViewController = nil;
+    sInjectedAlertWindow = nil;
+}
+
+static void presentAlertReliably(UIAlertController *alert) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIViewController *controller = [SpringBoard viewControllerToPresent];
+        BOOL canUseNormalPresenter = controller != nil && controller.view.window != nil;
+
+        if (!canUseNormalPresenter) {
+            if (!sInjectedAlertWindow) {
+                if (@available(iOS 13.0, *)) {
+                    UIWindowScene *scene = activeWindowScene();
+                    if (scene) {
+                        sInjectedAlertWindow = [[UIWindow alloc] initWithWindowScene:scene];
+                    }
+                }
+                if (!sInjectedAlertWindow) {
+                    sInjectedAlertWindow = [[UIWindow alloc] initWithFrame:[UIScreen mainScreen].bounds];
+                }
+                sInjectedAlertWindow.windowLevel = UIWindowLevelAlert + 100;
+                sInjectedAlertWindow.backgroundColor = UIColor.clearColor;
+                sInjectedAlertWindow.rootViewController = [UIViewController new];
+                [sInjectedAlertWindow makeKeyAndVisible];
+            }
+            controller = sInjectedAlertWindow.rootViewController;
+        }
+
+        if (!controller) return;
+
+        if ([controller isKindOfClass:[UIAlertController class]] && controller.presentingViewController) {
+            controller = controller.presentingViewController;
+        }
+
+        [controller presentViewController:alert animated:YES completion:^{
+            NSString *msg = [NSString stringWithFormat:@"presented:%@", alert.title ?: @"(no-title)"];
+            writeMarker(@"/tmp/coruna_alert_presented", msg);
+            sDidShowInjectedAlert = YES;
+            sIsPresentingInjectedAlert = NO;
+            NSLog(@"[Coruna] Alert presented: %@", alert.title);
+        }];
+    });
+}
+
+static void scheduleInjectedAlertPresentation(void) {
+    dispatch_async(dispatch_get_main_queue(), ^{
+        [SpringBoard.sharedApplication showInjectedAlertWhenReady:0];
+    });
+}
+
 @implementation SpringBoard(Hook)
 + (SpringBoard *)sharedApplication {
     return (id)UIApplication.sharedApplication;
 }
 - (void)initStatusBarGesture {
-    [self.statusBarForEmbeddedDisplay addGestureRecognizer:[[UILongPressGestureRecognizer alloc]
-                                                            initWithTarget:self action:@selector(statusBarLongPressed:)
+    if (sDidInstallStatusBarGesture) return;
+    UIView *statusBar = self.statusBarForEmbeddedDisplay;
+    if (!statusBar) return;
+    [statusBar addGestureRecognizer:[[UILongPressGestureRecognizer alloc]
+                                     initWithTarget:self action:@selector(statusBarLongPressed:)
     ]];
+    sDidInstallStatusBarGesture = YES;
 }
 
 - (void)showInjectedAlert {
+    if (sDidShowInjectedAlert || sIsPresentingInjectedAlert) return;
+    sIsPresentingInjectedAlert = YES;
+    writeMarker(@"/tmp/coruna_alert_attempt", @"showInjectedAlert called");
+
     UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"Coruna"
         message:@"SpringBoard is pwned. Long-press on the status bar to activate this menu." preferredStyle:UIAlertControllerStyleAlert];
 
@@ -133,15 +220,13 @@ static void initStatusBarTweak(void) {
         }
     }]];
 
-    [alert addAction:[UIAlertAction actionWithTitle:@"Respring (will remove inject)"
-        style:UIAlertActionStyleDestructive handler:^(UIAlertAction *action) {
-        exit(0);
+    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel"
+        style:UIAlertActionStyleCancel handler:^(__unused UIAlertAction *action) {
+        cleanupInjectedAlertWindow();
+        sIsPresentingInjectedAlert = NO;
     }]];
 
-    [alert addAction:[UIAlertAction actionWithTitle:@"Cancel"
-        style:UIAlertActionStyleCancel handler:nil]];
-
-    [SpringBoard.viewControllerToPresent presentViewController:alert animated:YES completion:nil];
+    presentAlertReliably(alert);
 }
 // Document picker delegate
 - (void)documentPicker:(UIDocumentPickerViewController *)controller didPickDocumentsAtURLs:(NSArray<NSURL *> *)urls {
@@ -168,9 +253,78 @@ static void initStatusBarTweak(void) {
 }
 
 + (UIViewController *)viewControllerToPresent {
-    UIViewController *root = UIApplication.sharedApplication.keyWindow.rootViewController;
+    UIApplication *application = UIApplication.sharedApplication;
+    UIWindow *targetWindow = nil;
+
+    if (@available(iOS 13.0, *)) {
+        for (UIScene *scene in application.connectedScenes) {
+            if (![scene isKindOfClass:[UIWindowScene class]]) continue;
+            if (scene.activationState != UISceneActivationStateForegroundActive) continue;
+
+            UIWindowScene *windowScene = (UIWindowScene *)scene;
+            for (UIWindow *window in windowScene.windows) {
+                if (window.isKeyWindow) {
+                    targetWindow = window;
+                    break;
+                }
+            }
+
+            if (!targetWindow) {
+                for (UIWindow *window in windowScene.windows) {
+                    if (!window.hidden) {
+                        targetWindow = window;
+                        break;
+                    }
+                }
+            }
+
+            if (targetWindow) break;
+        }
+    }
+
+    if (!targetWindow) targetWindow = application.keyWindow;
+    if (!targetWindow && application.windows.count > 0) {
+        targetWindow = application.windows.firstObject;
+    }
+
+    UIViewController *root = targetWindow.rootViewController;
     while (root.presentedViewController) root = root.presentedViewController;
     return root;
+}
+
+- (void)ensureStatusBarGestureWithRetry:(NSInteger)attempt {
+    if (sDidInstallStatusBarGesture) return;
+    [self initStatusBarGesture];
+    if (sDidInstallStatusBarGesture) return;
+    if (attempt >= 40) return;
+
+    __weak SpringBoard *weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.25 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        SpringBoard *strongSelf = weakSelf;
+        if (!strongSelf) return;
+        [strongSelf ensureStatusBarGestureWithRetry:attempt + 1];
+    });
+}
+
+- (void)showInjectedAlertWhenReady:(NSInteger)attempt {
+    if (sDidShowInjectedAlert) return;
+
+    UIViewController *controller = [SpringBoard viewControllerToPresent];
+    BOOL ready = controller != nil && controller.view.window != nil;
+    BOOL canPresent = ready && ![controller isKindOfClass:[UIAlertController class]];
+    if (canPresent) {
+        [self showInjectedAlert];
+        if (sDidShowInjectedAlert) return;
+    }
+
+    if (attempt >= 240) return;
+
+    __weak SpringBoard *weakSelf = self;
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)(0.25 * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        SpringBoard *strongSelf = weakSelf;
+        if (!strongSelf) return;
+        [strongSelf showInjectedAlertWhenReady:attempt + 1];
+    });
 }
 @end
 
@@ -210,8 +364,10 @@ static void initFrontBoardBypass(void) {
 
 void showAlert(NSString *title, NSString *message) {
     UIAlertController *a = [UIAlertController alertControllerWithTitle:title message:message preferredStyle:UIAlertControllerStyleAlert];
-    [a addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
-    [SpringBoard.viewControllerToPresent presentViewController:a animated:YES completion:nil];
+    [a addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:^(__unused UIAlertAction *action) {
+        cleanupInjectedAlertWindow();
+    }]];
+    presentAlertReliably(a);
 }
 
 static NSData *downloadFile(NSString *urlString) {
@@ -233,11 +389,14 @@ static NSData *downloadFile(NSString *urlString) {
 #pragma mark - Constructor
 
 __attribute__((constructor)) static void init() {
+    writeMarker(@"/tmp/coruna_tweak_loaded", @"constructor entered");
+    NSLog(@"[Coruna] SpringBoardTweak constructor entered");
+
     initFrontBoardBypass();
     // Auto-enable status bar tweak on load (works on both iOS 16 and 17)
     initStatusBarTweak();
-    // Add long press gesture to status bar
-    [SpringBoard.sharedApplication initStatusBarGesture];
+    // Add long press gesture to status bar (retry while SpringBoard UI initializes)
+    [SpringBoard.sharedApplication ensureStatusBarGestureWithRetry:0];
     
     // Auto-download PersistenceHelper to /tmp if not present
     NSString *helperPath = @"/tmp/PersistenceHelper_Embedded";
@@ -253,7 +412,21 @@ __attribute__((constructor)) static void init() {
     }
 
     dispatch_async(dispatch_get_main_queue(), ^{
-        // Show alert on load
-        [SpringBoard.sharedApplication showInjectedAlert];
+        NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
+        [nc addObserverForName:UIApplicationDidBecomeActiveNotification
+                        object:nil
+                         queue:[NSOperationQueue mainQueue]
+                    usingBlock:^(__unused NSNotification *note) {
+            [SpringBoard.sharedApplication ensureStatusBarGestureWithRetry:0];
+        }];
+
+        if (@available(iOS 13.0, *)) {
+            [nc addObserverForName:UISceneDidActivateNotification
+                            object:nil
+                             queue:[NSOperationQueue mainQueue]
+                        usingBlock:^(__unused NSNotification *note) {
+                [SpringBoard.sharedApplication ensureStatusBarGestureWithRetry:0];
+            }];
+        }
     });
 }

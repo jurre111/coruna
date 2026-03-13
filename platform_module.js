@@ -83,6 +83,9 @@ let m_14669ca3b1519ba2a8f40be287f646d4d7593eb0 = () => {
       /** @type {Object} Version-specific offsets and feature flags */
       versionFlags: {},
 
+      /** @type {Object} Alias for versionFlags (used by stage modules that expect `.Nn`) */
+      Nn: {},
+
       /** @type {*} Mach-O parser instance */
       machOParser: null,
 
@@ -538,6 +541,7 @@ let m_14669ca3b1519ba2a8f40be287f646d4d7593eb0 = () => {
       n = Object.assign(n, r);
     }
     platformState.versionFlags = n;
+    platformState.Nn = platformState.versionFlags;
   }
 
   // =========================================================================

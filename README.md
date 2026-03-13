@@ -15,3 +15,18 @@ There are so many analysis by other people right now so I'm not doing it again, 
 | iPhone 6s+ | 15.4.1 | jacurutu -> VariantB? |
 | iPhone Xs Max | 16.5 | terrorbird -> seedbell -> VariantB |
 | iPhone 15 Pro Max | 17.0 | cassowary -> seedbell_pre -> seedbell_17 -> VariantB |
+
+## GitHub Actions build (TweakLoader)
+
+This repo includes `.github/workflows/build-tweakloader.yml` to build `TweakLoader` on `macos-14` with Theos.
+
+- Trigger manually from **Actions → Build TweakLoader → Run workflow**.
+- Download artifact `tweakloader-build-<sha>`.
+- Use `dist/payloads/TweakLoader.dylib` from that artifact to replace `payloads/TweakLoader.dylib` on your host.
+
+The workflow also emits:
+
+- `dist/build/TweakLoader.dylib`
+- `dist/build/SpringBoardTweak.dylib` (when produced)
+- `dist/build/*.deb` (when packaging succeeds)
+- `dist/payloads-tweakloader.tar.gz`
