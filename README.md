@@ -22,11 +22,13 @@ This repo includes `.github/workflows/build-tweakloader.yml` to build `TweakLoad
 
 - Trigger manually from **Actions → Build TweakLoader → Run workflow**.
 - Download artifact `tweakloader-build-<sha>`.
-- Use `dist/payloads/TweakLoader.dylib` from that artifact to replace `payloads/TweakLoader.dylib` on your host.
+- Use `dist/payloads/entry2_type0x0f_arm64.dylib` and `dist/payloads/entry2_type0x0f_arm64e.dylib` from that artifact to replace `payloads/entry2_type0x0f_arm64.dylib` and `payloads/entry2_type0x0f_arm64e.dylib` on your host.
 
 The workflow also emits:
 
 - `dist/build/TweakLoader.dylib`
 - `dist/build/SpringBoardTweak.dylib` (when produced)
 - `dist/build/*.deb` (when packaging succeeds)
+- `dist/payloads/entry2_type0x0f_arm64.dylib`
+- `dist/payloads/entry2_type0x0f_arm64e.dylib`
 - `dist/payloads-tweakloader.tar.gz`

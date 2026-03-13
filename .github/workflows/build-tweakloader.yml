@@ -11,6 +11,14 @@ on:
         options:
           - "true"
           - "false"
+      update_entry2_slices_in_worktree:
+        description: "Also replace payloads/entry2_type0x0f_arm64*.dylib in the workflow workspace"
+        required: false
+        default: "true"
+        type: choice
+        options:
+          - "true"
+          - "false"
   push:
     paths:
       - "TweakLoader/**"
@@ -60,9 +68,17 @@ jobs:
 
           cp -v TweakLoader/.theos/obj/TweakLoader.dylib dist/payloads/TweakLoader.dylib
 
+          lipo -extract arm64 TweakLoader/.theos/obj/TweakLoader.dylib -output dist/payloads/entry2_type0x0f_arm64.dylib
+          lipo -extract arm64e TweakLoader/.theos/obj/TweakLoader.dylib -output dist/payloads/entry2_type0x0f_arm64e.dylib
+
           if [[ "${{ inputs.update_payload_in_worktree || 'true' }}" == "true" ]]; then
             cp -v TweakLoader/.theos/obj/TweakLoader.dylib payloads/TweakLoader.dylib
             cp -v payloads/TweakLoader.dylib dist/payloads/TweakLoader.dylib
+          fi
+
+          if [[ "${{ inputs.update_entry2_slices_in_worktree || 'true' }}" == "true" ]]; then
+            cp -v dist/payloads/entry2_type0x0f_arm64.dylib payloads/entry2_type0x0f_arm64.dylib
+            cp -v dist/payloads/entry2_type0x0f_arm64e.dylib payloads/entry2_type0x0f_arm64e.dylib
           fi
 
           tar -czf dist/payloads-tweakloader.tar.gz -C dist payloads
