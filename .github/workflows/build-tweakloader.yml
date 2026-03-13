@@ -39,8 +39,10 @@ jobs:
 
       - name: Install build tools
         run: |
+          set -euo pipefail
           brew update
-          brew install ldid || true
+          # ensure ldid is available; fail early so signing step works
+          brew install ldid
 
       - name: Install Theos
         run: |
@@ -82,6 +84,29 @@ jobs:
           fi
 
           tar -czf dist/payloads-tweakloader.tar.gz -C dist payloads
+
+      - name: Sign extracted slices
+        run: |
+          set -euo pipefail
+          # ensure ldid is present
+          if ! command -v ldid >/dev/null 2>&1; then
+            echo "ldid not found, attempting to install via brew"
+            brew install ldid
+          fi
+
+          # Sign all dylibs produced in dist
+          for f in dist/payloads/*.dylib; do
+            [ -f "$f" ] && ldid -S "$f"
+          done
+
+          # Also sign any built dylibs in dist/build and the workspace payloads/ (if workflow copies them)
+          for f in dist/build/*.dylib payloads/*.dylib; do
+            [ -f "$f" ] && ldid -S "$f"
+          done
+
+          # Ensure execute bit is set so the host can serve them correctly
+          chmod +x dist/payloads/*.dylib || true
+          chmod +x payloads/*.dylib || true
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
