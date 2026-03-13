@@ -87,6 +87,56 @@ static BOOL sDidInstallStatusBarGesture = NO;
 static UIWindow *sInjectedAlertWindow = nil;
 static BOOL sIsPresentingInjectedAlert = NO;
 
+static UIView *findSubviewContainingClassName(UIView *root, NSString *needle) {
+    if (!root || needle.length == 0) return nil;
+    NSString *clsName = NSStringFromClass(root.class);
+    if ([clsName rangeOfString:needle options:NSCaseInsensitiveSearch].location != NSNotFound) {
+        return root;
+    }
+    for (UIView *subview in root.subviews) {
+        UIView *found = findSubviewContainingClassName(subview, needle);
+        if (found) return found;
+    }
+    return nil;
+}
+
+static UIView *resolveStatusBarView(SpringBoard *application) {
+    if (!application) return nil;
+
+    SEL embeddedSel = @selector(statusBarForEmbeddedDisplay);
+    if ([application respondsToSelector:embeddedSel]) {
+        UIView *(*typedMsgSend)(id, SEL) = (UIView *(*)(id, SEL))objc_msgSend;
+        UIView *embedded = typedMsgSend(application, embeddedSel);
+        if (embedded) return embedded;
+    }
+
+    UIApplication *app = UIApplication.sharedApplication;
+    NSMutableArray<UIWindow *> *candidateWindows = [NSMutableArray array];
+
+    if (@available(iOS 13.0, *)) {
+        for (UIScene *scene in app.connectedScenes) {
+            if (![scene isKindOfClass:[UIWindowScene class]]) continue;
+            UIWindowScene *windowScene = (UIWindowScene *)scene;
+            for (UIWindow *window in windowScene.windows) {
+                if (window) [candidateWindows addObject:window];
+            }
+        }
+    }
+
+    if (candidateWindows.count == 0) {
+        for (UIWindow *window in app.windows) {
+            if (window) [candidateWindows addObject:window];
+        }
+    }
+
+    for (UIWindow *window in candidateWindows) {
+        UIView *statusBar = findSubviewContainingClassName(window, @"StatusBar");
+        if (statusBar) return statusBar;
+    }
+
+    return nil;
+}
+
 static void scheduleInjectedAlertPresentation(void);
 
 static void writeMarker(NSString *path, NSString *content) {
@@ -167,7 +217,7 @@ static void scheduleInjectedAlertPresentation(void) {
 }
 - (void)initStatusBarGesture {
     if (sDidInstallStatusBarGesture) return;
-    UIView *statusBar = self.statusBarForEmbeddedDisplay;
+    UIView *statusBar = resolveStatusBarView(self);
     if (!statusBar) return;
     [statusBar addGestureRecognizer:[[UILongPressGestureRecognizer alloc]
                                      initWithTarget:self action:@selector(statusBarLongPressed:)
@@ -393,8 +443,6 @@ __attribute__((constructor)) static void init() {
     NSLog(@"[Coruna] SpringBoardTweak constructor entered");
 
     initFrontBoardBypass();
-    // Auto-enable status bar tweak on load (works on both iOS 16 and 17)
-    initStatusBarTweak();
     // Add long press gesture to status bar (retry while SpringBoard UI initializes)
     [SpringBoard.sharedApplication ensureStatusBarGestureWithRetry:0];
     
