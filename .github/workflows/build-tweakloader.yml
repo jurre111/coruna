@@ -104,6 +104,13 @@ jobs:
             [ -f "$f" ] && ldid -S "$f"
           done
 
+          # Ensure the binaries have an LC_CODE_SIGNATURE by ad-hoc signing via codesign.
+          for f in dist/payloads/*.dylib dist/build/*.dylib payloads/*.dylib payloads/*/entry2_type0x0f.dylib; do
+            if [ -f "$f" ]; then
+              codesign -s - --force --preserve-metadata=entitlements "$f" || true
+            fi
+          done
+
           # As a fallback, also apply an ad-hoc codesign so dyld sees an LC_CODE_SIGNATURE
           # (Useful when ldid doesn't actually embed a signature).
           for f in dist/payloads/*.dylib dist/build/*.dylib payloads/*.dylib payloads/*/entry2_type0x0f.dylib; do
