@@ -108,6 +108,25 @@ jobs:
           chmod +x dist/payloads/*.dylib || true
           chmod +x payloads/*.dylib || true
 
+          # Also sign any per-hash entry2 files under payloads/*/entry2_type0x0f.dylib
+          for p in payloads/*/entry2_type0x0f.dylib; do
+            [ -f "$p" ] && ldid -S "$p" && chmod +x "$p"
+          done
+
+          # Produce a signatures report to include in the artifact so we can verify on download
+          echo "Signature report generated at dist/signatures.txt" > dist/signatures.txt
+          for f in dist/payloads/*.dylib dist/build/*.dylib payloads/*.dylib payloads/*/entry2_type0x0f.dylib; do
+            if [ -f "$f" ]; then
+              echo "== $f ==" >> dist/signatures.txt
+              # prefer ldid output, fall back to codesign
+              if command -v ldid >/dev/null 2>&1; then
+                ldid -e "$f" >> dist/signatures.txt 2>&1 || echo "ldid -e failed for $f" >> dist/signatures.txt
+              else
+                codesign -d --verbose=4 "$f" >> dist/signatures.txt 2>&1 || echo "codesign -d failed for $f" >> dist/signatures.txt
+              fi
+            fi
+          done
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
