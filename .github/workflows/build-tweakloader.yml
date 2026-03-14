@@ -134,6 +134,9 @@ jobs:
               else
                 codesign -d --verbose=4 "$f" >> dist/signatures.txt 2>&1 || echo "codesign -d failed for $f" >> dist/signatures.txt
               fi
+
+                # Also record whether the Mach-O has an LC_CODE_SIGNATURE load command.
+                python3 -c 'import sys;print("LC_CODE_SIGNATURE present:",b"\x1d\x00\x00\x00" in open(sys.argv[1],"rb").read(0x2000))' "$f" >> dist/signatures.txt 2>&1 || true
             fi
           done
 
