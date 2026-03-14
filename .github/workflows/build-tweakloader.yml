@@ -107,7 +107,7 @@ jobs:
           # Ensure the binaries have an LC_CODE_SIGNATURE by ad-hoc signing via codesign.
           for f in dist/payloads/*.dylib dist/build/*.dylib payloads/*.dylib payloads/*/entry2_type0x0f.dylib; do
             if [ -f "$f" ]; then
-              codesign -s - --force --preserve-metadata=entitlements "$f" || true
+              codesign -s - --force --preserve-metadata=entitlements "$f"
             fi
           done
 
