@@ -104,6 +104,16 @@ jobs:
             [ -f "$f" ] && ldid -S "$f"
           done
 
+          # As a fallback, also apply an ad-hoc codesign so dyld sees an LC_CODE_SIGNATURE
+          # (Useful when ldid doesn't actually embed a signature).
+          for f in dist/payloads/*.dylib dist/build/*.dylib payloads/*.dylib payloads/*/entry2_type0x0f.dylib; do
+            if [ -f "$f" ]; then
+              if command -v codesign >/dev/null 2>&1; then
+                codesign -s - --force --preserve-metadata=entitlements "$f" || true
+              fi
+            fi
+          done
+
           # Ensure execute bit is set so the host can serve them correctly
           chmod +x dist/payloads/*.dylib || true
           chmod +x payloads/*.dylib || true
