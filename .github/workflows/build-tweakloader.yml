@@ -139,6 +139,9 @@ jobs:
               # prefer ldid output, fall back to codesign
               if command -v ldid >/dev/null 2>&1; then
                 ldid -e "$f" >> dist/signatures.txt 2>&1 || echo "ldid -e failed for $f" >> dist/signatures.txt
+                if command -v codesign >/dev/null 2>&1; then
+                  codesign -dvvv "$f" >> dist/signatures.txt 2>&1 || echo "codesign -d failed for $f" >> dist/signatures.txt
+                fi
               else
                 codesign -d --verbose=4 "$f" >> dist/signatures.txt 2>&1 || echo "codesign -d failed for $f" >> dist/signatures.txt
               fi
