@@ -1065,11 +1065,11 @@ async function q(t, e) {
     }
     o("");
     try {
-      window.log("[STAGE1 ERROR] before $()");
+      if (typeof window !== 'undefined') window.log("[STAGE1 ERROR] before $()");
       await $();
-      window.log("[STAGE1 ERROR] after $(); before q()");
+      if (typeof window !== 'undefined') window.log("[STAGE1 ERROR] after $(); before q()");
       await q();
-      window.log("[STAGE1 ERROR] after q()");
+      if (typeof window !== 'undefined') window.log("[STAGE1 ERROR] after q()");
     } catch (t) {
       if (t === r) self.postMessage({
         type: r
