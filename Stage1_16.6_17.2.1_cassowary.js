@@ -1022,7 +1022,12 @@ async function q(t, e) {
         };
         const U = () => {
           for (let t = -0x1800n; t > -0x3000n; t -= 0x8n) {
-            const n = b - t;
+            let n;
+            try {
+              n = BigInt(b) - t;
+            } catch (e) {
+              continue;
+            }
             if (e.read64(n) == 0xfffe000000055432n && e.read64(n + 0x8n * 2n) == 0xfffe000000055432n && e.read64(n + 0x8n * 3n) == 0xfffe0000000ff432n && e.read64(n + 0x8n * 5n) == 0xfffe0000000ff432n) {
               o("");
               const t = e.read64(n + 0x8n * 1n);
