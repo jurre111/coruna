@@ -1502,7 +1502,9 @@ async function q(t, e) {
   } else {
     // Worker thread code
     try {
+      self.postMessage({ type: 0, msg: "worker_else_block_reached" });
       self.onmessage = (t) => {
+        self.postMessage({ type: 0, msg: "worker_onmessage_handler_called" });
         if (t.data.type === s) {
           l = t.data.xn;
           et();
