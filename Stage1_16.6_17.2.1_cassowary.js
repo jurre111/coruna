@@ -1117,10 +1117,10 @@ async function q(t, e) {
         // but with better error handling
         const t = q.toString();
         const workerCode = 
-          `(function() {
+          `(async function() {
             try {
               self.postMessage({type: 0, msg: 'worker_blob_start'});
-              (${t})();
+              await (${t})();
               self.postMessage({type: 0, msg: 'worker_q_completed'});
             } catch(err) {
               try {
