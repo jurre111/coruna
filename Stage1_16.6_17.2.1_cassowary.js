@@ -1497,20 +1497,12 @@ async function q(t, e) {
         self.postMessage({ type: 0, msg: "worker_started" });
       } catch (e) {}
       
-      // Send ready immediately
-      try {
-        self.postMessage({ type: 0, msg: "worker_ready" });
-      } catch (e) {}
-      
-      o("");
       self.onmessage = (t) => {
         try {
           try {
             self.postMessage({ type: 0, msg: "worker_onmessage_fired type=" + (t && t.data && t.data.type) });
           } catch (e) {}
-          o("");
           if (t.data.type === s) {
-            o("");
             try {
               self.postMessage({ type: 0, msg: "worker_executing_phase type=s" });
             } catch (e) {}
@@ -1524,6 +1516,11 @@ async function q(t, e) {
           } catch (e) {}
         }
       };
+      
+      // Signal that worker is ready to receive messages  
+      try {
+        self.postMessage({ type: 0, msg: "worker_ready" });
+      } catch (e) {}
     } catch (err) {
       try {
         self.postMessage({ type: 0, msg: "worker_setup_error: " + err.message });
