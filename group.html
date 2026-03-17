@@ -685,7 +685,28 @@
                                 D.send()
                         }))
                     }((I) + ".js");
-                    e[moduleId] = new Function(N)()
+                    try {
+                        e[moduleId] = new Function(N)()
+                    } catch (fnErr) {
+                        console.error("[LOADER] Function constructor error for module", moduleId, ":", fnErr.message);
+                        console.error("[LOADER] Code length:", N ? N.length : "null");
+                        console.error("[LOADER] Code first 200 chars:", N ? N.substring(0, 200) : "null");
+                        // Try alternative: use eval with indirect reference to potentially get different parsing
+                        if (moduleId && moduleId.includes("Stage1")) {
+                            console.log("[LOADER] Trying alternative loader for Stage1 module");
+                            try {
+                                // Create a sandbox and evaluate there
+                                const sandbox = { globalThis, moduleManager: globalThis.moduleManager };
+                                const wrapped = `(function() { ${N}; return r; }).call(sandbox)`;
+                                e[moduleId] = new Function('sandbox', wrapped)(sandbox);
+                                console.log("[LOADER] Alternative loader succeeded");
+                                return;
+                            } catch (altErr) {
+                                console.error("[LOADER] Alternative loader also failed:", altErr.message);
+                            }
+                        }
+                        throw fnErr;
+                    }
                 }
                 return c(moduleId)
             }
