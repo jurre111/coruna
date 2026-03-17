@@ -1163,10 +1163,14 @@ async function q(t, e) {
         self.postMessage({ type: 0, msg: "ct() outer error: " + String(t) });
       } catch(e) {}
     }
-    } catch (ctErr) {
-      try { self.postMessage({ type: 0, msg: "ct() error: " + (ctErr && ctErr.message) }); } catch(e) {}
-    }
-  };
+  } catch (ctOuterErr) {
+    try {
+      if (typeof self !== 'undefined') {
+        self.postMessage({ type: 0, msg: "ct() setup failed: " + String(ctOuterErr) });
+      }
+    } catch(e) {}
+  }
+};
   const ht = async (t) => {
     window.log("[STAGE1] ht() started - setting up exploit objects");
     o("");
