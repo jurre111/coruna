@@ -1021,6 +1021,12 @@ async function q(t, e) {
         t.ys = l;
         t.As = a;
         t.Us = s;
+      } catch (err) {
+        if (typeof self !== 'undefined') {
+          try { self.postMessage({ type: 0, msg: "$() setup error: " + String(err) }); } catch(e) {}
+        }
+        // Continue anyway - exploit may still work
+      }
     }
     async function q() {
       const e = t;
