@@ -1,6 +1,7 @@
-let r = {};
-"use strict";
-const {
+try {
+  let r = {};
+  "use strict";
+  const {
   N: G,
   tn: W,
   nn: C,
@@ -1542,4 +1543,11 @@ async function X() {
   return P.platformState.exploitPrimitive;
 }
 r.si = X;
+} catch (moduleErr) {
+  // Top-level error in module - log if possible
+  if (typeof console !== 'undefined' && typeof console.error === 'function') {
+    console.error("[Stage1] Module load error:", moduleErr && moduleErr.message ? moduleErr.message : String(moduleErr));
+  }
+  throw moduleErr;
+}
 return r;
