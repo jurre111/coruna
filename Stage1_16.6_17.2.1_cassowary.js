@@ -1130,12 +1130,18 @@ async function q(t, e) {
       } catch(e) {}
       try {
         await $();
+        try {
+          self.postMessage({ type: 0, msg: "ct() after await $()" });
+        } catch(e) {}
       } catch (dollarErr) {
         try {
           self.postMessage({ type: 0, msg: "ct() $() threw: " + String(dollarErr) });
         } catch(e) {}
         // Don't rethrow - continue anyway
       }
+      try {
+        self.postMessage({ type: 0, msg: "ct() after catch dollarErr" });
+      } catch(e) {}
       if (typeof window !== 'undefined') window.log("[STAGE1 ERROR] after $(); before q()");
       try {
         self.postMessage({ type: 0, msg: "ct() calling q()" });
