@@ -167,12 +167,11 @@ async function q(t, e) {
     if (typeof self !== 'undefined') {
       try { self.postMessage({ type: 0, msg: "ct() started in worker" }); } catch(e) {}
     }
-    try {
-      const t = new ut();
-      const e = true;
-      const n = false;
-      const s = true;
-      const l = 2;
+    const t = new ut();
+    const e = true;
+    const n = false;
+    const s = true;
+    const l = 2;
     const h = 2;
     const m = {
       cleanup: () => {},
@@ -1161,12 +1160,6 @@ async function q(t, e) {
     } catch (t) {
       try {
         self.postMessage({ type: 0, msg: "ct() outer error: " + String(t) });
-      } catch(e) {}
-    }
-    } catch (ctInitErr) {
-      // Handle initialization error
-      try {
-        self.postMessage({ type: 0, msg: "ct() init error: " + String(ctInitErr) });
       } catch(e) {}
     }
   };
