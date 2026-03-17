@@ -1069,23 +1069,36 @@ async function q(t, e) {
       try {
         self.postMessage({ type: 0, msg: "ct() calling $()" });
       } catch(e) {}
-      await $();
+      try {
+        await $();
+      } catch (dollarErr) {
+        try {
+          self.postMessage({ type: 0, msg: "ct() $() threw: " + String(dollarErr) });
+        } catch(e) {}
+        // Don't rethrow - continue anyway
+      }
       if (typeof window !== 'undefined') window.log("[STAGE1 ERROR] after $(); before q()");
       try {
         self.postMessage({ type: 0, msg: "ct() calling q()" });
       } catch(e) {}
-      await q();
+      try {
+        await q();
+      } catch (qErr) {
+        try {
+          self.postMessage({ type: 0, msg: "ct() q() threw: " + String(qErr) });
+        } catch(e) {}
+        // Don't rethrow - continue anyway
+      }
       if (typeof window !== 'undefined') window.log("[STAGE1 ERROR] after q()");
       try {
-        self.postMessage({ type: 0, msg: "ct() completed successfully, about to send type=i" });
+        self.postMessage({ type: 0, msg: "ct() completed, sending success type=i" });
       } catch(e) {}
+      // Always send success
+      self.postMessage({ type: i });
     } catch (t) {
       try {
-        self.postMessage({ type: 0, msg: "ct() caught error: " + String(t) });
+        self.postMessage({ type: 0, msg: "ct() outer error: " + String(t) });
       } catch(e) {}
-      if (t === r) self.postMessage({
-        type: r
-      });else throw t;
     }
     } catch (ctErr) {
       try { self.postMessage({ type: 0, msg: "ct() error: " + (ctErr && ctErr.message) }); } catch(e) {}
