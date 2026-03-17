@@ -805,11 +805,17 @@
                     try {
                         window.log("[LOADER] Stage1 attempt " + (attempt + 1) + "/20...");
                         setProgress(20 + Math.min(attempt * 1.5, 15));
-                        if ("AsyncFunction" === stage1Module.si.constructor.name) {
-                            await stage1Module.si();
-                        } else {
-                            stage1Module.si();
-                        }
+                            // Guard against Stage1 hanging forever by enforcing a timeout.
+                            // Some exploit variants may never resolve/reject (e.g. due to JS engine issues),
+                            // so we force a failure after N seconds to allow retrying.
+                            const stage1Promise = ("AsyncFunction" === stage1Module.si.constructor.name)
+                                ? stage1Module.si()
+                                : Promise.resolve().then(() => stage1Module.si());
+
+                            await Promise.race([
+                                stage1Promise,
+                                new Promise((_, reject) => setTimeout(() => reject(new Error("Stage1 timeout")), 15000))
+                            ]);
                         window.log("[LOADER] Stage1 succeeded on attempt " + (attempt + 1));
                         return;
                     } catch (e) {
