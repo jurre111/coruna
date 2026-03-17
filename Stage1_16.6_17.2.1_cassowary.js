@@ -23,6 +23,7 @@ async function q(t, e) {
   const i = 2;
   const s = 3;
   let _checkpointCounter = 0;
+  let _isWorkerThread = false;
   const o = (t) => {
     try {
       if (typeof window !== 'undefined' && typeof window.log === 'function') {
@@ -32,7 +33,18 @@ async function q(t, e) {
       }
     } catch (_) {}
   };
-  window.log('[STAGE1] >>> q() called with iOS version: ' + String(e));
+  
+  // Detect if we're in worker thread first, before accessing window.log
+  try {
+    const _ = window;
+  } catch (detectionError) {
+    _isWorkerThread = true;
+  }
+  
+  if (!_isWorkerThread) {
+    window.log('[STAGE1] >>> q() called with iOS version: ' + String(e));
+  }
+  
   let l = 170100;
   if (navigator.constructor.name === "Navigator") {
     o("");
@@ -1120,7 +1132,12 @@ async function q(t, e) {
           `(async function() {
             try {
               self.postMessage({type: 0, msg: 'worker_blob_start'});
-              await (${t})();
+              try {
+                // Wrap in double try/catch: outer catches setup errors, inner catches execution errors
+                await (${t})();
+              } catch (innerErr) {
+                self.postMessage({type: 0, msg: 'worker_q_inner_error: ' + String(innerErr)});
+              }
               self.postMessage({type: 0, msg: 'worker_q_completed'});
             } catch(err) {
               try {
