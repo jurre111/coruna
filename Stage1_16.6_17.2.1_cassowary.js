@@ -1,5 +1,5 @@
+let r = {};
 try {
-  let r = {};
   "use strict";
   const {
   N: G,
