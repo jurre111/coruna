@@ -1260,9 +1260,23 @@ async function q(t, e) {
       return new x.Int64(e, n);
     }
     read32FromInt64(t) {
+      // Handle Int64 objects with high bits > 127 (which would fail in yt())
+      if (typeof t === 'object' && t.it !== undefined && t.et !== undefined) {
+        // Direct access to Int64 components - compute address as BigInt to avoid overflow
+        const addr = BigInt(t.it) + (BigInt(t.et) << 32n);
+        return this.read32(Number(addr & 0xffffffffn));
+      }
       return this.read32(x.O(t.yt()));
     }
     readInt64FromInt64(t) {
+      // Handle Int64 objects - use safe component access
+      if (typeof t === 'object' && t.it !== undefined && t.et !== undefined) {
+        const addr = BigInt(t.it) + (BigInt(t.et) << 32n);
+        const addrNum = Number(addr & 0xffffffffn);
+        const e = this.read32(x.O(addrNum));
+        const n = this.read32(x.O(addrNum + 4));
+        return new x.Int64(e, n);
+      }
       return this.readInt64FromOffset(t.yt());
     }
     writeInt64ToOffset(t, e) {
