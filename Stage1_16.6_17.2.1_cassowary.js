@@ -210,7 +210,7 @@ async function q(t, e) {
     }
     async function F(t) {
       try {
-        if (window.testRunner) await print(testRunner.describe(t));
+        if (typeof window !== 'undefined' && window.testRunner) await print(testRunner.describe(t));
       } catch (t) {}
     }
     async function N(t, e) {
