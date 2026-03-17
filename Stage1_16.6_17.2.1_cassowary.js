@@ -936,57 +936,90 @@ async function q(t, e) {
       }
     };
     async function $() {
-      o("");
-      function e(t) {
-        if (typeof t == "bigint") {
-          J[0] = t;
-          t = V[0] + (V[1] & 127) * 4294967296;
-        }
-        let e = m.Ys(t);
-        let n = m.Ys(t + 4);
-        V[0] = e;
-        V[1] = n;
-        return J[0];
-      }
-      function n(t, e) {
-        if (typeof t == "bigint") {
-          J[0] = t;
-          t = V[0] + (V[1] & 127) * 4294967296;
-        }
-        m.Bo(t, e);
-      }
-      function r(t) {
-        pm.testobj.a = t;
-        return e(pm.testobjAddr);
-      }
-      pm.init();
-      pm.wo();
-      pm.Ao();
-      pm.test();
-      const i = (t) => {
-        const n = r(t);
+      try {
         o("");
-        const i = e(n + rt(tt[w]));
+        function e(t) {
+          if (typeof t == "bigint") {
+            J[0] = t;
+            t = V[0] + (V[1] & 127) * 4294967296;
+          }
+          let e = m.Ys(t);
+          let n = m.Ys(t + 4);
+          V[0] = e;
+          V[1] = n;
+          return J[0];
+        }
+        function n(t, e) {
+          if (typeof t == "bigint") {
+            J[0] = t;
+            t = V[0] + (V[1] & 127) * 4294967296;
+          }
+          m.Bo(t, e);
+        }
+        function r(t) {
+          pm.testobj.a = t;
+          return e(pm.testobjAddr);
+        }
+        try {
+          if (typeof self !== 'undefined') self.postMessage({ type: 0, msg: "$() calling pm.init()" });
+          pm.init();
+        } catch (err) {
+          if (typeof self !== 'undefined') self.postMessage({ type: 0, msg: "$() pm.init threw: " + String(err) });
+          throw err;
+        }
+        try {
+          if (typeof self !== 'undefined') self.postMessage({ type: 0, msg: "$() calling pm.wo()" });
+          pm.wo();
+        } catch (err) {
+          if (typeof self !== 'undefined') self.postMessage({ type: 0, msg: "$() pm.wo threw: " + String(err) });
+          throw err;
+        }
+        try {
+          if (typeof self !== 'undefined') self.postMessage({ type: 0, msg: "$() calling pm.Ao()" });
+          pm.Ao();
+        } catch (err) {
+          if (typeof self !== 'undefined') self.postMessage({ type: 0, msg: "$() pm.Ao threw: " + String(err) });
+          throw err;
+        }
+        try {
+          if (typeof self !== 'undefined') self.postMessage({ type: 0, msg: "$() calling pm.test()" });
+          pm.test();
+        } catch (err) {
+          if (typeof self !== 'undefined') self.postMessage({ type: 0, msg: "$() pm.test threw: " + String(err) });
+          throw err;
+        }
+        const i = (t) => {
+          const n = r(t);
+          o("");
+          const i = e(n + rt(tt[w]));
+          o("");
+          const s = i + rt(tt[c]);
+          const l = e(s);
+          return [i, s, l];
+        };
+        const s = r(t.os);
+        const [l, h, a] = i(t.es);
+        const [f, p, y] = i(t.ss);
         o("");
-        const s = i + rt(tt[c]);
-        const l = e(s);
-        return [i, s, l];
-      };
-      const s = r(t.os);
-      const [l, h, a] = i(t.es);
-      const [f, p, y] = i(t.ss);
-      o("");
-      o("");
-      o("");
-      n(f + rt(tt[u]), -0);
-      n(l + rt(tt[u]), -0);
-      n(h, t.Oi.wn(p));
-      pm.cleanup();
-      t.ws = f;
-      t.ds = y;
-      t.ys = l;
-      t.As = a;
-      t.Us = s;
+        o("");
+        o("");
+        n(f + rt(tt[u]), -0);
+        n(l + rt(tt[u]), -0);
+        n(h, t.Oi.wn(p));
+        pm.cleanup();
+        t.ws = f;
+        t.ds = y;
+        t.ys = l;
+        t.As = a;
+        t.Us = s;
+      } catch (finalErr) {
+        if (typeof self !== 'undefined') {
+          try {
+            self.postMessage({ type: 0, msg: "$() failed with: " + String(finalErr) });
+          } catch(e) {}
+        }
+        throw finalErr;
+      }
     }
     async function q() {
       const e = t;
