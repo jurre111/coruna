@@ -1039,11 +1039,11 @@ async function q(t, e) {
     }
     o("");
     try {
-      o("[STAGE1] before $()");
+      window.log("[STAGE1 ERROR] before $()");
       await $();
-      o("[STAGE1] after $(); before q()");
+      window.log("[STAGE1 ERROR] after $(); before q()");
       await q();
-      o("[STAGE1] after q()");
+      window.log("[STAGE1 ERROR] after q()");
     } catch (t) {
       if (t === r) self.postMessage({
         type: r
@@ -1094,10 +1094,10 @@ async function q(t, e) {
       o("");
       h.onerror = (t) => {
         o("");
-        o("[STAGE1] worker.onerror: " + (t && t.message));
+        window.log("[STAGE1 ERROR] worker.onerror: " + (t && t.message));
       };
       h.onmessage = (t) => {
-        o("[STAGE1] worker.onmessage type=" + (t && t.data && t.data.type));
+        window.log("[STAGE1 ERROR] worker.onmessage type=" + (t && t.data && t.data.type));
         if (t.data.type === n) ;else if (t.data.type === r) {
           o("");
           h.terminate();
