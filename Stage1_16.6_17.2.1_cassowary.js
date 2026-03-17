@@ -164,15 +164,15 @@ async function q(t, e) {
     return t & rt(it);
   }
   const ct = async () => {
+    if (typeof self !== 'undefined') {
+      try { self.postMessage({ type: 0, msg: "ct() started in worker" }); } catch(e) {}
+    }
     try {
-      if (typeof self !== 'undefined') {
-        try { self.postMessage({ type: 0, msg: "ct() started in worker" }); } catch(e) {}
-      }
       const t = new ut();
-    const e = true;
-    const n = false;
-    const s = true;
-    const l = 2;
+      const e = true;
+      const n = false;
+      const s = true;
+      const l = 2;
     const h = 2;
     const m = {
       cleanup: () => {},
@@ -1163,13 +1163,13 @@ async function q(t, e) {
         self.postMessage({ type: 0, msg: "ct() outer error: " + String(t) });
       } catch(e) {}
     }
-  } catch (ctErr) {
-    // Handle ct setup error
-    try {
-      self.postMessage({ type: 0, msg: "ct() setup error: " + String(ctErr) });
-    } catch(e) {}
-  }
-};
+    } catch (ctInitErr) {
+      // Handle initialization error
+      try {
+        self.postMessage({ type: 0, msg: "ct() init error: " + String(ctInitErr) });
+      } catch(e) {}
+    }
+  };
   const ht = async (t) => {
     window.log("[STAGE1] ht() started - setting up exploit objects");
     o("");
