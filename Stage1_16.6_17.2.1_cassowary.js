@@ -1163,11 +1163,10 @@ async function q(t, e) {
         self.postMessage({ type: 0, msg: "ct() outer error: " + String(t) });
       } catch(e) {}
     }
-  } catch (ctOuterErr) {
+  } catch (ctErr) {
+    // Handle ct setup error
     try {
-      if (typeof self !== 'undefined') {
-        self.postMessage({ type: 0, msg: "ct() setup failed: " + String(ctOuterErr) });
-      }
+      self.postMessage({ type: 0, msg: "ct() setup error: " + String(ctErr) });
     } catch(e) {}
   }
 };
