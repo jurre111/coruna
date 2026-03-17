@@ -781,6 +781,7 @@
             // Stage 1
             let stage1Module;
             const offsets = platformModule.platformState.versionFlags;
+            window.log("[LOADER] versionFlags: " + JSON.stringify(offsets));
 
             setStatus("Stage 1: WebKit exploit...", "running");
             window.log("[LOADER] Selecting stage1 variant...");
