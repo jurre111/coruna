@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Test Stage1 Load</title>
+</head>
+<body>
+    <h1>Stage1 Load Test</h1>
+    <div id="result"></div>
+    <script>
+        fetch('/Stage1_16.6_17.2.1_cassowary.js')
+            .then(r => r.text())
+            .then(code => {
+                try {
+                    const fn = new Function(code);
+                    document.getElementById('result').innerHTML = '<p style="color: green;">✓ Function created successfully</p>';
+                    const result = fn();
+                    document.getElementById('result').innerHTML += '<p style="color: blue;">✓ Function executed, returned object with keys: ' + Object.keys(result).slice(0, 3).join(', ') + '</p>';
+                } catch(e) {
+                    document.getElementById('result').innerHTML = '<p style="color: red;">✗ Error: ' + e.message + '</p><pre>' + e.stack + '</pre>';
+                }
+            })
+            .catch(e => {
+                document.getElementById('result').innerHTML = '<p style="color: red;">✗ Fetch error: ' + e.message + '</p>';
+            });
+    </script>
+</body>
+</html>
