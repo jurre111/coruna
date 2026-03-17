@@ -22,7 +22,13 @@ async function q(t, e) {
   const r = 1;
   const i = 2;
   const s = 3;
-  const o = (t) => {};
+  const o = (t) => {
+    try {
+      if (typeof window !== 'undefined' && typeof window.log === 'function') {
+        window.log('[STAGE1] ' + String(t));
+      }
+    } catch (_) {}
+  };
   let l = 170100;
   if (navigator.constructor.name === "Navigator") {
     o("");
