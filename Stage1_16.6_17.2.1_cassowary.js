@@ -1119,12 +1119,12 @@ async function q(t, e) {
         const workerCode = 
           `(function() {
             try {
-              self.postMessage({type: 0, msg: 'worker_entry'});
+              self.postMessage({type: 0, msg: 'worker_blob_start'});
               (${t})();
               self.postMessage({type: 0, msg: 'worker_q_completed'});
             } catch(err) {
               try {
-                self.postMessage({type: 0, msg: 'worker_error: ' + String(err)});
+                self.postMessage({type: 0, msg: 'worker_outer_error: ' + String(err) + ' stack: ' + (err.stack ? err.stack.substring(0, 100) : 'no stack')});
               } catch(e2) {}
             }
           })();`;
