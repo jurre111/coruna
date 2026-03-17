@@ -1154,6 +1154,8 @@ async function q(t, e) {
           c.Us = c.Oi.Co(e[4]);
           P.platformState.exploitPrimitive = c;
           window.log("[STAGE1] u() - exploit primitive created and stored!");
+          window.log("[STAGE1] === Stage1 COMPLETE, resolving promise ===");
+          t();  // CRITICAL: Resolve the promise to allow Stage2 to load
           return;
         } catch (t) {
           window.log("[STAGE1 ERROR] u() - exception in exploit setup: " + (t && t.message));
