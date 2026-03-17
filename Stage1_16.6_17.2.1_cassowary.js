@@ -1100,12 +1100,25 @@ async function q(t, e) {
       window.log("[STAGE1] a() called - creating worker");
       try {
         const t = q.toString();
-        const e = "(" + t.toString() + ")()";
-        window.log("[STAGE1] a() - worker code length: " + e.length);
-        const c = URL.createObjectURL(new Blob([e], {
+        const workerCode = "try { " + 
+          "try { self.postMessage({type: 0, msg: 'worker_started'}); } catch(e1) {} " +
+          "(" + t.toString() + ")(); " +
+          "} catch(err) { " +
+          "  try { self.postMessage({type: 0, msg: 'worker_error: ' + err.message}); } catch(e2) {} " +
+          "}";
+        window.log("[STAGE1] a() - worker code length: " + workerCode.length);
+        const c = URL.createObjectURL(new Blob([workerCode], {
           type: "text/javascript"
         }));
-        const h = new Worker(c);
+        window.log("[STAGE1] a() - blob created, about to create Worker");
+        let h;
+        try {
+          h = new Worker(c);
+          window.log("[STAGE1] a() - Worker constructor succeeded");
+        } catch (workerErr) {
+          window.log("[STAGE1 ERROR] Worker constructor threw: " + (workerErr && workerErr.message));
+          throw workerErr;
+        }
         URL.revokeObjectURL(c);
         window.log("[STAGE1] a() - worker created, setting up handlers");
         o("");
@@ -1461,26 +1474,38 @@ async function q(t, e) {
   } else {
     // Worker thread code
     try {
-      self.postMessage({ type: 0, msg: "worker_started" });
-    } catch (e) {
-      // postMessage might not work immediately
-    }
-    o("");
-    self.onmessage = (t) => {
       try {
-        self.postMessage({ type: 0, msg: "worker_onmessage_fired type=" + (t && t.data && t.data.type) });
-      } catch (e) {}
-      o("");
-      if (t.data.type === s) {
-        o("");
-        try {
-          self.postMessage({ type: 0, msg: "worker_executing_phase type=s" });
-        } catch (e) {}
-        l = t.data.xn;
-        et();
-        ct();
+        self.postMessage({ type: 0, msg: "worker_started" });
+      } catch (e) {
+        // postMessage might not work immediately
       }
-    };
+      o("");
+      self.onmessage = (t) => {
+        try {
+          try {
+            self.postMessage({ type: 0, msg: "worker_onmessage_fired type=" + (t && t.data && t.data.type) });
+          } catch (e) {}
+          o("");
+          if (t.data.type === s) {
+            o("");
+            try {
+              self.postMessage({ type: 0, msg: "worker_executing_phase type=s" });
+            } catch (e) {}
+            l = t.data.xn;
+            et();
+            ct();
+          }
+        } catch (err) {
+          try {
+            self.postMessage({ type: 0, msg: "worker_onmessage_error: " + err.message });
+          } catch (e) {}
+        }
+      };
+    } catch (err) {
+      try {
+        self.postMessage({ type: 0, msg: "worker_setup_error: " + err.message });
+      } catch (e) {}
+    }
   }
 }
 async function X() {
