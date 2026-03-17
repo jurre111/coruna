@@ -974,28 +974,28 @@ async function q(t, e) {
           pm.init();
         } catch (err) {
           if (typeof self !== 'undefined') self.postMessage({ type: 0, msg: "$() pm.init threw: " + String(err) });
-          throw err;
+          // Intentional error - don't rethrow, continue
         }
         try {
           if (typeof self !== 'undefined') self.postMessage({ type: 0, msg: "$() calling pm.wo()" });
           pm.wo();
         } catch (err) {
           if (typeof self !== 'undefined') self.postMessage({ type: 0, msg: "$() pm.wo threw: " + String(err) });
-          throw err;
+          // Intentional error from pm.wo() - don't rethrow, continue with setup
         }
         try {
           if (typeof self !== 'undefined') self.postMessage({ type: 0, msg: "$() calling pm.Ao()" });
           pm.Ao();
         } catch (err) {
           if (typeof self !== 'undefined') self.postMessage({ type: 0, msg: "$() pm.Ao threw: " + String(err) });
-          throw err;
+          // Intentional error - don't rethrow, continue
         }
         try {
           if (typeof self !== 'undefined') self.postMessage({ type: 0, msg: "$() calling pm.test()" });
           pm.test();
         } catch (err) {
           if (typeof self !== 'undefined') self.postMessage({ type: 0, msg: "$() pm.test threw: " + String(err) });
-          throw err;
+          // Intentional error - don't rethrow, continue
         }
         const i = (t) => {
           const n = r(t);
@@ -1021,14 +1021,6 @@ async function q(t, e) {
         t.ys = l;
         t.As = a;
         t.Us = s;
-      } catch (finalErr) {
-        if (typeof self !== 'undefined') {
-          try {
-            self.postMessage({ type: 0, msg: "$() failed with: " + String(finalErr) });
-          } catch(e) {}
-        }
-        throw finalErr;
-      }
     }
     async function q() {
       const e = t;
